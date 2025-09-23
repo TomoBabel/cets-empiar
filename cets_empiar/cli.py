@@ -1,7 +1,11 @@
 import json
+import logging
 import os
 import typer
+from enum import Enum
 from pathlib import Path
+from rich.logging import RichHandler
+from typing import Annotated, Optional
 
 from cryoet_metadata._base._models import Dataset
 
@@ -11,12 +15,32 @@ from .thumbnail import process_tomogram_thumbnail
 from .yaml_parsing import load_empiar_yaml, parse_regions
 from .cets.region import create_cets_region_from_region_definition
 
+
 app = typer.Typer()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(name)s - %(asctime)s - %(levelname)s - %(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)]
+)
+logger = logging.getLogger()
 
-@app.command()
+
+class ProjectionMethod(str, Enum):
+    mean = "mean"
+    maximum = "max"
+    middle = "middle"
+
+
+@app.command("empiar-to-cets")
 def convert_empiar_to_cets(
-        accession_id: str, 
+        accession_id: Annotated[
+            str, 
+            typer.Argument(
+                help="The EMPIAR accession ID for the entry to be converted."
+            )
+        ],
 ):
 
     yaml_definition_dict = load_empiar_yaml(accession_id)
@@ -43,19 +67,58 @@ def convert_empiar_to_cets(
     save_cets_model_to_json(accession_id, accession_id, cets_dataset)      
 
 
-@app.command()
+@app.command("create-thumbnails")
 def create_thumbnail_images(
-        accession_id: str, 
+        accession_id: Annotated[
+            str, 
+            typer.Argument(
+                help="The EMPIAR accession ID for the CETS object to create thumbnails for."
+            )
+        ],
+        thumbnail_size: Annotated[
+            Optional[tuple[int, int]], 
+            typer.Option(
+                "--thumbnail-size", 
+                "-t", 
+                help="Size of the output thumbnails in pixels, as [x, y]. Deafult is [256, 256].",
+            )
+        ] = [256, 256],
+        projection_method: Annotated[
+            Optional[ProjectionMethod], 
+            typer.Option(
+                "--projection-method", 
+                "-p",
+                help="Method for projection on z-axis, must be one of 'max', 'mean', or 'middle'. Default is max.",
+            )
+        ] = "max",
+        limit_projection: Annotated[
+            Optional[float], 
+            typer.Option(
+                "--limit-projection", 
+                "-lp", 
+                min=0.0, 
+                max=1.0, 
+                help="Proportion of slices to project over, about the central slice of the tomogram. Defailt is 0.5 (half slices).",
+            )
+        ] = 0.5,
+        limit_annotation: Annotated[
+            Optional[float], 
+            typer.Option(
+                "--limit-annotation", 
+                "-la", 
+                min=0.0, 
+                max=1.0, 
+                help="Proportion of annotation points to accept, about the central slice of the tomogram. Default is 0.5 (half depth).",
+            )
+        ] = 0.5,
 ):
 
     dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")
     if not os.path.exists(dataset_file_path):
         raise FileNotFoundError(f"File {dataset_file_path} not found.")
-    try:
-        with open(dataset_file_path, 'r') as f:
-            dataset_dict = json.load(f)
-    except json.JSONDecodeError as e:
-        raise
+
+    with open(dataset_file_path, 'r') as f:
+        dataset_dict = json.load(f)
     
     dict_to_cets_model(dataset_dict, Dataset)
 
@@ -64,7 +127,11 @@ def create_thumbnail_images(
             process_tomogram_thumbnail(
                 accession_id, 
                 region["tomograms"], 
-                region["annotations"]
+                region["annotations"], 
+                thumbnail_size, 
+                projection_method.value, 
+                limit_projection, 
+                limit_annotation, 
             )
 
 
