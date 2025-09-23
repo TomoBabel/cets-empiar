@@ -7,7 +7,7 @@ from pathlib import Path
 from rich.logging import RichHandler
 from typing import Annotated, Optional
 
-from cryoet_metadata._base._models import Dataset
+from cets_data_model.models.models import Dataset
 
 from .cets_utils import dict_to_cets_model, save_cets_model_to_json
 from .empiar_utils import get_files_for_empiar_entry_cached

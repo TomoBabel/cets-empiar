@@ -13,7 +13,7 @@ pydantic = "^2.11.7"
 rich = "^14.0.0"
 typer = "^0.16.0"
 requests = "^2.32.4"
-cryoet-metadata = { git = "https://github.com/Chr1st0p43rR/cryoet-geometry-fork.git", branch = "empiar-cets-start" }
+cets_data_model = { git = "https://github.com/TomoBabel/cets-data-models.git", branch = "7-Affine-matrix-types" }
 ruamel-yaml = "^0.18.14"
 fs = "^2.4.16"
 parse = "^1.20.2"
