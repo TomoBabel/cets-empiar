@@ -3,6 +3,7 @@ import logging
 import mrcfile
 import numpy as np
 import os
+from enum import Enum
 from pathlib import Path
 from PIL import Image
 from typing import Union
@@ -23,6 +24,12 @@ from cets_empiar.thumbnails.thumbnail_image_utils import (
 
 
 logger = logging.getLogger(__name__)
+
+
+class ProjectionMethod(str, Enum):
+    mean = "mean"
+    maximum = "max"
+    middle = "middle"
 
 
 def create_tomogram_thumbnail(
@@ -127,11 +134,11 @@ def process_tomogram_thumbnail(
 
 
 def create_cets_data_thumbnails(
-        accession_id, 
-        thumbnail_size, 
-        projection_method, 
-        limit_projection, 
-        limit_annotation
+        accession_id: str, 
+        thumbnail_size: tuple[int, int], 
+        projection_method: ProjectionMethod, 
+        limit_projection: float, 
+        limit_annotation: float
 ):
 
     dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")

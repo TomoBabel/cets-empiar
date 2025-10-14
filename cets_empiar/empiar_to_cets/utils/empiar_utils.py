@@ -90,20 +90,23 @@ def get_files_for_empiar_entry_cached(
 
 def download_file_from_empiar(
         accession_id: str, 
-        file_name: str, 
+        file_name: str
 ) -> str:
-    
+
     accession_no = accession_id.split("-")[1]
     empiar_path = f"{accession_no}/data/{file_name}"
     url = f"{EMPIAR_BASE_URL}{empiar_path}"
     
     file_type = Path(file_name).suffix[1:]
     temp_fd, local_path = tempfile.mkstemp(suffix=f".{file_type}", prefix=f"{file_type}_")
-    os.close(temp_fd)
     
     try:
+        os.close(temp_fd)
         urllib.request.urlretrieve(url, local_path)
         return local_path
     except Exception as e:
-        raise Exception(f"Failed to download {url}: {str(e)}")
-
+        try:
+            os.unlink(local_path)
+        except OSError:
+            pass
+        raise Exception(f"Failed to download {url}: {str(e)}") from e

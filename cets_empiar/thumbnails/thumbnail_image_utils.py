@@ -17,18 +17,37 @@ logger = logging.getLogger(__name__)
 def download_mrc_file(
         url: str, 
         cache_filepath: str, 
+        expected_size: int | None
 ):
-
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
     
-    with open(cache_filepath, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
-    
-    final_size = os.path.getsize(cache_filepath)
-    logger.info(f"Download complete: {final_size:,} bytes")
+    try:
+        response = requests.get(url, stream=True, timeout=300)
+        response.raise_for_status()
+        
+        content_length = response.headers.get('content-length')
+        if content_length and expected_size:
+            if int(content_length) != expected_size:
+                raise ValueError(f"Size mismatch: expected {expected_size}, got {content_length}")
+        
+        with open(cache_filepath, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1048576): # 1 MB chunks
+                if chunk:
+                    f.write(chunk)
+        
+        final_size = os.path.getsize(cache_filepath)
+        logger.info(f"Download complete: {final_size:,} bytes")
+        
+        try:
+            with mrcfile.open(cache_filepath, mode='r', permissive=True) as mrc:
+                _ = mrc.data.shape  # Just check it can be read
+        except Exception as e:
+            os.unlink(cache_filepath)
+            raise ValueError(f"Downloaded file is not a valid MRC: {e}") from e
+            
+    except requests.RequestException as e:
+        if os.path.exists(cache_filepath):
+            os.unlink(cache_filepath)
+        raise Exception(f"Failed to download {url}: {e}") from e
 
 
 def load_star_coordinates_from_json(
@@ -147,28 +166,38 @@ def get_transformed_annotation_coordinates(
         raise NotImplementedError(f"Annotation type {annotation['type']} not supported yet.")
 
 
+def filter_coordinates_by_depth(
+    coordinates: list[tuple[float, float, float]], 
+    depth: float, 
+    limit_proportion: float
+) -> list[tuple[float, float]]:
+    """Filter 3D coordinates to 2D based on proximity to center depth."""
+    
+    center_depth = depth / 2.0
+    max_deviation = depth * limit_proportion
+    
+    return [
+        (x, y) 
+        for x, y, z in coordinates 
+        if abs(z - center_depth) <= max_deviation
+    ]
+
+
 def project_and_scale_coordinates(
-        coordinates: list[tuple[float, float, float]],
-        tomogram_shape: tuple[int, int, int], 
-        thumbnail_size: tuple[int, int], 
-        limit_annotation: float, 
+    coordinates: list[tuple[float, float, float]],
+    tomogram_shape: tuple[int, int, int], 
+    thumbnail_size: tuple[int, int], 
+    limit_annotation: float
 ) -> list[tuple[float, float]]:
     
     tomo_depth, tomo_width, tomo_height = tomogram_shape
-
-    z_centre = tomo_depth / 2
-    coords_2d = [(x, y) for x, y, z in coordinates if (abs(z - z_centre) / tomo_depth) <= limit_annotation]
+    
+    coords_2d = filter_coordinates_by_depth(coordinates, tomo_depth, limit_annotation)
     
     scale_x = thumbnail_size[0] / tomo_width 
     scale_y = thumbnail_size[1] / tomo_height 
     
-    scaled_coords = [(x * scale_x, y * scale_y) for x, y in coords_2d]
-    
-    # TODO: some check of validity here, e.g.:
-    # valid_coords = [(x, y) for x, y in scaled_coords 
-    #                if 0 <= x <= thumb_width and 0 <= y <= thumb_height]
-    
-    return scaled_coords
+    return [(x * scale_x, y * scale_y) for x, y in coords_2d]
 
 
 def make_tomogram_projection(

@@ -1,19 +1,12 @@
-import json
 import logging
-import os
 import typer
-from enum import Enum
-from pathlib import Path
 from rich.logging import RichHandler
 from typing import Annotated, Optional
 
-from cets_data_model.models.models import Dataset
+from cets_empiar.validation.validation import validate_cets
 
-from .validation.validation import validate_cets_annotations
-
-from cets_empiar.cets_utils import dict_to_cets_model
 from cets_empiar.empiar_to_cets.empiar_conversion import convert_empiar_entry_to_cets_dataset
-from cets_empiar.thumbnails.cets_data_thumbnail_generation import create_cets_data_thumbnails
+from cets_empiar.thumbnails.cets_data_thumbnail_generation import ProjectionMethod, create_cets_data_thumbnails
 
 
 app = typer.Typer()
@@ -26,12 +19,6 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger()
-
-
-class ProjectionMethod(str, Enum):
-    mean = "mean"
-    maximum = "max"
-    middle = "middle"
 
 
 @app.command("empiar-to-cets")
@@ -62,7 +49,7 @@ def create_thumbnail_images(
                 "-t", 
                 help="Size of the output thumbnails in pixels, as [x, y]. Deafult is [256, 256].",
             )
-        ] = [256, 256],
+        ] = (256, 256),
         projection_method: Annotated[
             Optional[ProjectionMethod], 
             typer.Option(
@@ -106,20 +93,7 @@ def validate_cets_data(
     ],
 ): 
     
-    dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")
-    if not os.path.exists(dataset_file_path):
-        raise FileNotFoundError(f"File {dataset_file_path} not found.")
-
-    with open(dataset_file_path, 'r') as f:
-        dataset_dict = json.load(f)
-
-    dict_to_cets_model(dataset_dict, Dataset)
-
-    for region in dataset_dict["regions"]:
-        if (tomograms := region["tomograms"]) is not None and (annotations := region["annotations"]) is not None:
-            # TODO: really just assuming one-to-one currently
-            validate_cets_annotations(tomograms, annotations)
-
+    validate_cets(accession_id)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any, Type
 from pydantic import BaseModel, ValidationError
 from pydantic.alias_generators import to_snake
 
@@ -10,19 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 def dict_to_cets_model(
-        dict: dict[str, Any],
-        cets_model_class: Type[BaseModel],
-) -> Optional[BaseModel]:
+    model_data: dict[str, Any], 
+    cets_model_class: Type[BaseModel], 
+) -> BaseModel:
     
-    cets_model = None
     try:
-        cets_model = cets_model_class.model_validate(dict)
+        return cets_model_class.model_validate(model_data)
     except ValidationError as e:
         logger.error(
-            f"Validation error for {cets_model_class.__name__} with data: {dict}. Error: {e}"
+            f"Validation error for {cets_model_class.__name__}: {e}"
         )
-    
-    return cets_model
+        raise
 
 
 def get_model_type_dir(cache_dirpath, model: Type[BaseModel]) -> Path:

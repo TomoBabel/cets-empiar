@@ -1,22 +1,34 @@
 import logging
-import math
 import numpy as np
 
-from cets_empiar.empiar_to_cets.utils.annotation_utils import load_and_filter_annotation_star_file, get_coordinates_and_units_from_star_json
-from cets_empiar.empiar_to_cets.utils.empiar_utils import EMPIARFileList
-from cets_empiar.empiar_to_cets.utils.yaml_parsing import RegionDefinition
 from cets_empiar.empiar_to_cets.conversion.coordinate_system import COORDINATE_SYSTEMS
 from cets_empiar.empiar_to_cets.conversion.coordinate_transformation import make_coordinate_transformation
+from cets_empiar.empiar_to_cets.utils.annotation_utils import load_and_filter_annotation_star_file, get_coordinates_and_units_from_star_json
+from cets_empiar.empiar_to_cets.utils.yaml_parsing import RegionDefinition
 
 
 logger = logging.getLogger(__name__)
 
 
 def create_new_annotation_coordinate_system_and_transformations(
-        tomogram_transformations: list | None, 
-        pixel_size: tuple[float, float, float] | None, 
-        annotation_default_coordinate_system: str | None
-) -> tuple[list, list]:
+    tomogram_transformations: list[dict] | None, 
+    pixel_size: tuple[float, float, float] | None, 
+    annotation_default_coordinate_system: str | None
+) -> tuple[list[dict], list[dict]]:
+    """
+    Priority order:
+    1. If annotation_default_coordinate_system is provided, use it directly
+    2. If pixel_size is provided, create physical sampling coordinate system
+    3. Otherwise, return empty lists
+    
+    Args:
+        tomogram_transformations: Existing tomogram coordinate transformations
+        pixel_size: Physical pixel size in angstroms (x, y, z)
+        annotation_default_coordinate_system: Name of predefined coordinate system, set in definition file
+        
+    Returns:
+        Tuple of (coordinate_systems, coordinate_transformations)
+    """
     
     if annotation_default_coordinate_system:
         if annotation_default_coordinate_system not in COORDINATE_SYSTEMS:
@@ -42,8 +54,6 @@ def create_new_annotation_coordinate_system_and_transformations(
         ]
 
         return annotation_coordinate_systems, annotation_coordinate_transformations
-
-
 
     return [], []
 
