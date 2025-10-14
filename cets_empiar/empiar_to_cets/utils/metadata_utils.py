@@ -6,9 +6,9 @@ from pathlib import Path
 from fs.ftpfs import FTPFS
 from typing import Any, Union
 
-from .empiar_utils import download_file_from_empiar
-from .metadata_models import MdocFile, ZValueSection
-from .utils import make_local_data_path
+from cets_empiar.utils import make_local_data_path
+from cets_empiar.empiar_to_cets.utils.empiar_utils import download_file_from_empiar
+from cets_empiar.empiar_to_cets.utils.metadata_models import MdocFile, ZValueSection
 
 
 logger = logging.getLogger(__name__)
@@ -250,21 +250,33 @@ def read_mrc_header(filepath):
         with ftp_fs.open(filepath, "rb") as f:
             header_data = f.read(1024)
     
-    # Parse MRC header - 
+    # Parse MRC header - according to MRC2014 format - https://www.ccpem.ac.uk/mrc-format/mrc2014/
+    # TODO: other MRC formats
     # Format: nx, ny, nz, mode, nxstart, nystart, nzstart, mx, my, mz
     header_ints = struct.unpack("<10i", header_data[:40])
-    
+    nx, ny, nz = header_ints[:3]
+    mx = header_ints[7] if header_ints[7] > 0 else nx
+    my = header_ints[8] if header_ints[8] > 0 else ny
+    mz = header_ints[9] if header_ints[9] > 0 else nz
+
+    if not mx or not my or not mz:
+        logger.warning(
+            f"Warning: MRC header has some zero sampling dimensions (mx, my, mz): {mx}, {my}, {mz}. "
+            f"Image dimensions (nx, ny, nz): {nx}, {ny}, {nz} will be used where m_ is zero."
+        )
+
     # Bytes 40-52: cell dimensions (3 floats)
     cell_dims = struct.unpack("<3f", header_data[40:52])
     
-    # Bytes 52-64: cell angles (3 floats) 
-    cell_angles = struct.unpack("<3f", header_data[52:64])
-    
-    # TODO: currently don't use all of these, find a CETS home for them?
-    return {
-        "dimensions": header_ints[:3],  # nx, ny, nz
-        "mode": header_ints[3],         # data type
-        "cell_dimensions": cell_dims,
-        "cell_angles": cell_angles
-    }
+    # pixel size should use sampling dimensions (mx, my, mz), if present,
+    # # in case image is cropped, not image dimensions (nx, ny, nz) — see block above
+    pixel_size = (
+        cell_dims[0] / mx, 
+        cell_dims[1] / my, 
+        cell_dims[2] / mz
+    )
 
+    return {
+        "dimensions": (nx, ny, nz),
+        "pixel_size": pixel_size
+    }

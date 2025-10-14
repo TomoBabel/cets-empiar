@@ -41,6 +41,7 @@ class Annotation(BaseModel):
     file_name: str
     image_name: Optional[str] = None
     tomogram_column: Optional[str] = None
+    default_coordinate_system: Optional[str] = None
 
 
 # TODO: should metadata be a list? In what circumstances will there be multiple files, and what formats?

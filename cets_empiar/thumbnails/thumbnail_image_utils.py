@@ -5,12 +5,14 @@ import numpy as np
 import os
 import requests
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw
 from typing import Union
 
-from .config import settings
+from ..config import settings
+
 
 logger = logging.getLogger(__name__)
+
 
 def download_mrc_file(
         url: str, 
@@ -44,6 +46,105 @@ def load_star_coordinates_from_json(
         coordinates.append((x, y, z))
     
     return coordinates
+
+
+def check_coordinate_systems_without_transformation(
+        anno_coordinate_systems: list[dict], 
+        tomo_coordinate_systems: list[dict]
+):  
+    anno_cs_names = {cs["name"] for cs in anno_coordinate_systems}
+    tomo_cs_names = {cs["name"] for cs in tomo_coordinate_systems}
+
+    if common_cs := anno_cs_names & tomo_cs_names:
+        if len(common_cs) == 1:
+            return
+        raise ValueError("Multiple common coordinate systems for annotation and tomogram, cannot tell which to use.")
+    
+    raise ValueError("No common coordinate systems for annotation and tomogram.")
+
+
+def check_coordinate_system_with_transformation(
+        anno_coordinate_transformations: list[dict], 
+        anno_coordinate_systems: list[dict], 
+        tomo_coordinate_systems: list[dict]
+) -> dict:
+    
+    anno_cs_names = {cs["name"] for cs in anno_coordinate_systems}
+    tomo_cs_names = {cs["name"] for cs in tomo_coordinate_systems}
+    
+    for transformation in anno_coordinate_transformations:
+        input_cs = transformation["input"]
+        output_cs = transformation["output"]
+
+        if (
+            input_cs in tomo_cs_names and output_cs in anno_cs_names
+            or input_cs in anno_cs_names and output_cs in tomo_cs_names
+        ): 
+            return transformation
+    
+    raise ValueError("Annotation coordinate system doesn't have a transformation to/from tomogram coordinate system")
+
+
+def apply_coordinate_transformation(
+        coordinates, 
+        transformation
+) -> list[tuple[float, float, float]] | None:
+    
+    if transformation["transformation_type"] == "scale":
+        scale_factors = transformation["scale"]
+        transformed_coordinates = [
+            (x * scale_factors[0], y * scale_factors[1], z * scale_factors[2]) 
+            for x, y, z in coordinates
+        ]
+        return transformed_coordinates
+    else:
+        raise NotImplementedError(f"Transformation type {transformation['transformation_type']} not supported yet.")
+
+
+def get_transformed_point_set_3D_coordinates(
+        annotation: dict, 
+        tomogram: dict
+) -> list[tuple[float, float, float]]:
+    
+    coordinates = annotation.get("origin3D", [])
+    if not coordinates:
+        raise ValueError("No 'origin3D' field found in point_set_3D annotation.")
+    
+    anno_coordinate_transformations = annotation.get("coordinate_transformations", [])
+    anno_coordinate_systems = annotation.get("coordinate_systems", [])
+    tomo_coordinate_systems = tomogram.get("coordinate_systems", [])
+
+    if not anno_coordinate_systems or not tomo_coordinate_systems:
+        raise ValueError("Coordinate systems missing in annotation and/or tomogram.")
+    
+    if not anno_coordinate_transformations:
+        check_coordinate_systems_without_transformation(
+            anno_coordinate_systems, 
+            tomo_coordinate_systems
+        )
+    else:
+        transformation_to_apply = check_coordinate_system_with_transformation(
+            anno_coordinate_transformations, 
+            anno_coordinate_systems, 
+            tomo_coordinate_systems
+        )
+        coordinates = apply_coordinate_transformation(
+            coordinates, 
+            transformation_to_apply
+        )
+    
+    return coordinates
+
+
+def get_transformed_annotation_coordinates(
+        annotation: dict, 
+        tomogram: dict
+) -> list[tuple[float, float, float]]:
+    
+    if annotation["type"] == "point_set_3D":
+        return get_transformed_point_set_3D_coordinates(annotation, tomogram)
+    else:
+        raise NotImplementedError(f"Annotation type {annotation['type']} not supported yet.")
 
 
 def project_and_scale_coordinates(
@@ -135,97 +236,3 @@ def plot_annotation_points_on_image(
     return thumbnail_img
 
 
-def create_tomogram_thumbnail(
-        tomogram_data: np.ndarray, 
-        thumbnail_size: tuple[int, int],
-        coordinates: Union[list[tuple[float, float]], None],
-        projection_method: str, 
-        limit_projection: float, 
-):
-    
-    projection = make_tomogram_projection(
-        tomogram_data, 
-        projection_method, 
-        limit_projection, 
-    )
-    
-    # TODO: some check of orientation?
-    # TODO: and dimensions?
-    # TODO: establish convention for orientation of axes
-    # in cases seen so, projection requires flipping vertically
-    projection = np.flipud(projection) 
-
-    thumbnail_img = convert_projection_to_rgb_thumbnail(
-        projection, 
-        thumbnail_size, 
-    )
-    
-    if coordinates:
-        thumbnail_img = plot_annotation_points_on_image(
-            thumbnail_img, 
-            coordinates
-        )
-        
-    return thumbnail_img
-
-
-def process_tomogram_thumbnail(
-        accession_id: str, 
-        tomograms: list, 
-        annotations: Union[list, None], 
-        thumbnail_size: tuple[int, int], 
-        projection_method: str, 
-        limit_projection: float, 
-        limit_annotation: float, 
-):
-    
-    output_dir = Path(f"local-data/{accession_id}/thumbnails")
-    output_dir.mkdir(exist_ok=True, parents=True)
-
-    cache_dirpath = settings.cache_root_dirpath / f"{accession_id}" / "files"
-    cache_dirpath.mkdir(exist_ok=True, parents=True)
-
-    for tomogram in tomograms:
-
-        tomo_path = tomogram["path"]
-        filename = os.path.basename(tomo_path).replace(".mrc", "")
-        cache_filename = f"cache_{filename}.mrc"
-
-        cache_filepath = os.path.join(cache_dirpath, cache_filename)
-        if os.path.exists(cache_filepath):
-            logger.info(f"Using cached file: {cache_filepath}")
-        else:
-            logger.info(f"Downloading tomogram from: {tomo_path}")
-            download_mrc_file(tomo_path, cache_filepath)
-
-        with mrcfile.open(cache_filepath, mode="r") as mrc:
-            tomo_data = mrc.data.copy()
-        
-        # TODO: allow for more than one annotation
-        # TODO: allow for other annotations types (assume point curently)
-        # TODO: make a field for correspondence of annotation to tomogram
-
-        projected_coords = None
-        if annotations is not None:
-            if len(annotations) == 1:
-                json_file_path = annotations[0]["path"]
-                original_coords = load_star_coordinates_from_json(json_file_path)
-                projected_coords = project_and_scale_coordinates(
-                    original_coords, 
-                    tomo_data.shape, 
-                    thumbnail_size, 
-                    limit_annotation, 
-                )
-            else:
-                logger.info("More than one annotation set found; skipping.")
-
-        thumbnail = create_tomogram_thumbnail(
-            tomo_data, 
-            thumbnail_size, 
-            projected_coords, 
-            projection_method, 
-            limit_projection, 
-        )
-        
-        thumbnail_path = os.path.join(output_dir, f"{filename}_{projection_method}_thumbnail.png")
-        thumbnail.save(thumbnail_path)

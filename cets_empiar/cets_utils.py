@@ -8,9 +8,10 @@ from pydantic.alias_generators import to_snake
 
 logger = logging.getLogger(__name__)
 
+
 def dict_to_cets_model(
-    dict: dict[str, Any],
-    cets_model_class: Type[BaseModel],
+        dict: dict[str, Any],
+        cets_model_class: Type[BaseModel],
 ) -> Optional[BaseModel]:
     
     cets_model = None

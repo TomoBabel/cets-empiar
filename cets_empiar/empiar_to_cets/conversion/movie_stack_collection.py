@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from cets_empiar.yaml_parsing import RegionDefinition, MovieStack
-from cets_empiar.empiar_utils import EMPIAR_BASE_URL, EMPIARFileList, get_files_matching_pattern
-from cets_empiar.metadata_models import MdocFile
+from cets_empiar.empiar_to_cets.utils.yaml_parsing import RegionDefinition, MovieStack
+from cets_empiar.empiar_to_cets.utils.empiar_utils import EMPIAR_BASE_URL, EMPIARFileList, get_files_matching_pattern
+from cets_empiar.empiar_to_cets.utils.metadata_models import MdocFile
 
 
 def create_cets_movie_stack_collection_from_region_definition(
