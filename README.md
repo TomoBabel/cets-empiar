@@ -49,6 +49,13 @@ can be used to limit the number of slices to project over, according to the abov
 
 is similar to `--limit-projection`, in that you can choose to limit the number of annotation points, based on a proportion of their z coordinate values. And as above, the default is 0.5, and minimum and maximum are 0.0 and 1.0. This option is useful when there are a lot of annotation points, and they swamp the thumbnail image; by limiting their number, you get to see some of the image, too.
 
+## Validation
+To validate:
+
+    poetry run cets-empiar validate <EMPIAR_accession_id>
+
+again, EMPIAR-12104, once converted to CETS, can be used to demonstrate. 
+
 ## Input
 The yaml definition files are similar to those used in the EMPIAR ingest, but naturally, have a slightly different (and still developing) format, to assist in parsing EMPIAR data to the CETS specification. 
 
