@@ -1,6 +1,5 @@
 import logging
 from cets_data_model.models.models import PointSet3D, Tomogram
-from pydantic import field_validator, model_validator, ValidationError
 from typing import Literal, Optional, Dict, Any
 
 

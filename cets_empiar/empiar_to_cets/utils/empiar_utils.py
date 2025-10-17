@@ -68,7 +68,7 @@ def get_files_for_empiar_entry_cached(
         accession_id: str
 ) -> EMPIARFileList:
     
-    #FIXME - do the caching properly, use a separately configurable path
+    # TODO - specify a configurable path for output data
     cache_dirpath = Path(f"local-data/{accession_id}/files")
     cache_dirpath.mkdir(exist_ok=True, parents=True)
     file_list_fpath = cache_dirpath / "all_files.json"
