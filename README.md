@@ -49,10 +49,17 @@ can be used to limit the number of slices to project over, according to the abov
 
 is similar to `--limit-projection`, in that you can choose to limit the number of annotation points, based on a proportion of their z coordinate values. And as above, the default is 0.5, and minimum and maximum are 0.0 and 1.0. This option is useful when there are a lot of annotation points, and they swamp the thumbnail image; by limiting their number, you get to see some of the image, too.
 
+## Validation
+To validate:
+
+    poetry run cets-empiar validate <EMPIAR_accession_id>
+
+again, EMPIAR-12104, once converted to CETS, can be used to demonstrate. 
+
 ## Input
 The yaml definition files are similar to those used in the EMPIAR ingest, but naturally, have a slightly different (and still developing) format, to assist in parsing EMPIAR data to the CETS specification. 
 
 ## Output
-Output files are stored locally, in the folder "local-data", subfolders of which are named according to EMPIAR accession ID. Of principal interest is the json file that contains the data according to the CETS specification. The models are defined [here](https://github.com/TomoBabel/cets-data-models), but actually, the fork, [here](https://github.com/Chr1st0p43rR/cryoet-geometry-fork/tree/empiar-cets-start) (and note the branch), is currently what's used in this project, for it had a small change which is necessary for proper recording of transformation matrices (soon, the former repository will be switched to). The classes according to which the output is built are found in this [file](https://github.com/Chr1st0p43rR/cryoet-geometry-fork/blob/empiar-cets-start/src/cryoet_metadata/_base/_models.py), specifically. 
+Output files are stored locally, in the folder "local-data", subfolders of which are named according to EMPIAR accession ID. Of principal interest is the json file that contains the data according to the CETS specification. The models are defined [here](https://github.com/TomoBabel/cets-data-models), specifically, in this [file](https://github.com/TomoBabel/cets-data-models/blob/main/src/cets_data_model/models/models.py).
 
 The other output that is saved comprises json files representing the list of all EMPIAR files for the particular entry, and various metadata formats. 

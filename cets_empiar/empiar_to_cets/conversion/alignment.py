@@ -4,6 +4,7 @@ def create_cets_alignment_from_alignment_metadata(
 ) -> list[dict]:
     
     # TODO: should Alignment class have a path field?
+    # TODO: these need proper coordinate system assignments
 
     alignments = []
     for i, alignment in enumerate(alignment_metadata["projection_alignments"]):

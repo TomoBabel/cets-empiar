@@ -25,8 +25,9 @@ regions:
     annotations:
       - label: "TS_006_star"
         annotation_type: "point_set_3D"
-        file_name: "Control/particle_lists/all_ribo_refined.star"
+        file_name: "Control/particle_lists/all_ribo_cleaned.star"
         image_name: "TS_006.tomostar"
+        default_coordinate_system: "default_image_voxel"
   - title: "TS_007"
     movie_stacks:
       - label: "TS_007_0-0"

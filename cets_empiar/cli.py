@@ -1,22 +1,16 @@
-import json
 import logging
-import os
 import typer
-from enum import Enum
-from pathlib import Path
 from rich.logging import RichHandler
 from typing import Annotated, Optional
 
-from cryoet_metadata._base._models import Dataset
+from cets_empiar.validation.validation import validate_cets
 
-from .cets_utils import dict_to_cets_model, save_cets_model_to_json
-from .empiar_utils import get_files_for_empiar_entry_cached
-from .thumbnail import process_tomogram_thumbnail
-from .yaml_parsing import load_empiar_yaml, parse_regions
-from .cets.region import create_cets_region_from_region_definition
+from cets_empiar.empiar_to_cets.empiar_conversion import convert_empiar_entry_to_cets_dataset
+from cets_empiar.thumbnails.cets_data_thumbnail_generation import ProjectionMethod, create_cets_data_thumbnails
 
 
 app = typer.Typer()
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,12 +19,6 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger()
-
-
-class ProjectionMethod(str, Enum):
-    mean = "mean"
-    maximum = "max"
-    middle = "middle"
 
 
 @app.command("empiar-to-cets")
@@ -42,29 +30,8 @@ def convert_empiar_to_cets(
             )
         ],
 ):
-
-    yaml_definition_dict = load_empiar_yaml(accession_id)
-    regions = parse_regions(yaml_definition_dict)
-
-    empiar_files = get_files_for_empiar_entry_cached(accession_id)
-
-    cets_dataset_dict = {}
-    dataset_regions = []
-    for region in regions:
-        cets_region_dict = create_cets_region_from_region_definition(
-            accession_id,
-            region, 
-            empiar_files
-        )
-        dataset_regions.append(cets_region_dict)
-
-    cets_dataset_dict["name"] = accession_id
-    cets_dataset_dict["regions"] = dataset_regions
-    cets_dataset = dict_to_cets_model(
-        cets_dataset_dict, 
-        cets_model_class=Dataset
-    )
-    save_cets_model_to_json(accession_id, accession_id, cets_dataset)      
+    
+    convert_empiar_entry_to_cets_dataset(accession_id)
 
 
 @app.command("create-thumbnails")
@@ -82,7 +49,7 @@ def create_thumbnail_images(
                 "-t", 
                 help="Size of the output thumbnails in pixels, as [x, y]. Deafult is [256, 256].",
             )
-        ] = [256, 256],
+        ] = (256, 256),
         projection_method: Annotated[
             Optional[ProjectionMethod], 
             typer.Option(
@@ -113,26 +80,20 @@ def create_thumbnail_images(
         ] = 0.5,
 ):
 
-    dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")
-    if not os.path.exists(dataset_file_path):
-        raise FileNotFoundError(f"File {dataset_file_path} not found.")
+    create_cets_data_thumbnails(accession_id, thumbnail_size, projection_method, limit_projection, limit_annotation)
 
-    with open(dataset_file_path, 'r') as f:
-        dataset_dict = json.load(f)
+
+@app.command("validate")
+def validate_cets_data(
+    accession_id: Annotated[
+        str, 
+        typer.Argument(
+        help="The EMPIAR accession ID for the CETS object to validate."
+        )
+    ],
+): 
     
-    dict_to_cets_model(dataset_dict, Dataset)
-
-    for region in dataset_dict["regions"]:
-        if region["tomograms"] is not None:
-            process_tomogram_thumbnail(
-                accession_id, 
-                region["tomograms"], 
-                region["annotations"], 
-                thumbnail_size, 
-                projection_method.value, 
-                limit_projection, 
-                limit_annotation, 
-            )
+    validate_cets(accession_id)
 
 
 if __name__ == "__main__":
