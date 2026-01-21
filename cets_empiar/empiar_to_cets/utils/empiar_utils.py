@@ -4,11 +4,14 @@ import os
 import parse
 import tempfile
 import urllib.request
+
+from enum import Enum
+from fs.ftpfs import FTPFS
 from pathlib import Path
 from typing import List
 from pydantic import BaseModel
-from fs.ftpfs import FTPFS
 
+from cets_empiar.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +29,8 @@ class EMPIARFileList(BaseModel):
 
 
 def get_files_matching_pattern(
-        file_list: EMPIARFileList, 
-        file_pattern: str
+    file_list: EMPIARFileList, 
+    file_pattern: str
 ) -> list[str]:
 
     selected_file_references = []
@@ -44,7 +47,9 @@ def get_files_matching_pattern(
     return selected_file_references
 
 
-def get_list_of_empiar_files(accession_no: str) -> EMPIARFileList:
+def get_list_of_empiar_files(
+    accession_no: str
+) -> EMPIARFileList:
 
     ftp_fs = FTPFS('ftp.ebi.ac.uk')
     root_path = f"/empiar/world_availability/{accession_no}/data"
@@ -65,11 +70,11 @@ def get_list_of_empiar_files(accession_no: str) -> EMPIARFileList:
 
 
 def get_files_for_empiar_entry_cached(
-        accession_id: str
+    accession_id: str
 ) -> EMPIARFileList:
     
-    # TODO - specify a configurable path for output data
-    cache_dirpath = Path(f"local-data/{accession_id}/files")
+    default_cache_dir = get_settings().default_cache_dir
+    cache_dirpath = default_cache_dir / f"{accession_id}/files"
     cache_dirpath.mkdir(exist_ok=True, parents=True)
     file_list_fpath = cache_dirpath / "all_files.json"
 
@@ -89,8 +94,8 @@ def get_files_for_empiar_entry_cached(
 
 
 def download_file_from_empiar(
-        accession_id: str, 
-        file_name: str
+    accession_id: str, 
+    file_name: str
 ) -> str:
 
     accession_no = accession_id.split("-")[1]
