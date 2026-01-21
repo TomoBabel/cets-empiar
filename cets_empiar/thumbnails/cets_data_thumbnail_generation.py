@@ -8,11 +8,10 @@ from pathlib import Path
 from PIL import Image
 from typing import Union
 
-from ..config import settings
-
 from cets_data_model.models.models import Dataset
 
 from cets_empiar.cets_utils import dict_to_cets_model
+from cets_empiar.settings import get_settings
 from cets_empiar.thumbnails.thumbnail_image_utils import (
     download_mrc_file, 
     get_transformed_annotation_coordinates, 
@@ -79,10 +78,13 @@ def process_tomogram_thumbnail(
         limit_annotation: float, 
 ):
     
-    output_dir = Path(f"local-data/{accession_id}/thumbnails")
+    default_cets_output_dir = get_settings().default_cets_output_dir
+    default_cache_dir = get_settings().default_cache_dir
+
+    output_dir = default_cets_output_dir / f"/{accession_id}/thumbnails"
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    cache_dirpath = settings.cache_root_dirpath / f"{accession_id}" / "files"
+    cache_dirpath = default_cache_dir / f"{accession_id}"/"files"
     cache_dirpath.mkdir(exist_ok=True, parents=True)
 
     for tomogram in tomograms:

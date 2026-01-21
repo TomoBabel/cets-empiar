@@ -1,17 +1,19 @@
+import cets_data_model.models.models as cets_models
+
 
 def make_scale_transformation(
         input_cs: str, 
         output_cs: str, 
-        scale: tuple[float, float, float]
-) -> dict:
+        scale: list[float, float, float]
+) -> cets_models.Scale:
     
-    return {
-        "transformation_type": "scale",
-        "scale": scale, 
-        "name": f"{input_cs}_to_{output_cs}_scale_{'_'.join(map(str, scale))}", 
-        "input": input_cs, 
-        "output": output_cs
-    }
+    return cets_models.Scale.model_construct(
+        scale=scale, 
+        transformation_type="scale", 
+        name=f"{input_cs}_to_{output_cs}_scale_{'_'.join(map(str, scale))}", 
+        input=input_cs, 
+        output=output_cs
+    )
 
 
 def make_coordinate_transformation(
@@ -19,7 +21,7 @@ def make_coordinate_transformation(
         input_cs: str, 
         output_cs: str, 
         params: list
-) -> dict:
+) -> cets_models.Scale:
     
     if type == "scale":
         if len(params[0]) != 3:

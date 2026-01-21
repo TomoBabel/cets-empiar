@@ -4,11 +4,10 @@ import mrcfile
 import numpy as np
 import os
 import requests
+
 from pathlib import Path
 from PIL import Image, ImageDraw
 from typing import Union
-
-from ..config import settings
 
 
 logger = logging.getLogger(__name__)
