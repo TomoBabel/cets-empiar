@@ -38,6 +38,40 @@ def convert_empiar_to_cets(
     empiar_conversion.convert_empiar_entry_to_cets(definition_path)
 
 
+@cets_empiar.command("cets-to-roc")
+def cets_to_ro_crate(
+    cets_path: Annotated[
+        Path,
+        typer.Option(
+            "--cets-path", 
+            "-cep", 
+            case_sensitive=False, 
+            help="Path to the CETS json file.", 
+        ),
+    ],
+    definition_path: Annotated[
+        Path,
+        typer.Option(
+            "--definition-path", 
+            "-dp", 
+            case_sensitive=False, 
+            help="Path to the CETS definition yaml file."
+        ),
+    ],
+    crate_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--crate-path",
+            "-crp",
+            case_sensitive=False,
+            help="Path to output the ro-crate document",
+        ),
+    ] = get_settings().default_ro_crate_output_dir,
+):
+
+    cets_conversion.convert_cets_to_ro_crate(cets_path, definition_path, crate_path)
+
+
 @cets_empiar.command("create-thumbnails")
 def create_thumbnail_images(
     accession_id: Annotated[
