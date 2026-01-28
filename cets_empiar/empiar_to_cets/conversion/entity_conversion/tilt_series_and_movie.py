@@ -185,9 +185,30 @@ def _create_movie_stack_for_section(
     )
 
 
+def _calculate_movie_frame_accumulated_dose(
+    z_section: metadata_parsing.ZValueSection,
+    frame_index: int
+) -> float:
+    """Calculate accumulated dose up to and including a specific frame."""    
+    metadata = z_section.metadata
+    
+    # Dose accumulated before this tilt angle started
+    # (includes any scout/focus images taken before the series)
+    prior_dose = float(metadata["PriorRecordDose"])
+    
+    # Dose per frame
+    frame_dose_str = metadata["FrameDosesAndNumber"].split()[0]
+    dose_per_frame = float(frame_dose_str)
+    
+    # Accumulated dose up to and including this frame
+    accumulated_dose = prior_dose + (dose_per_frame * (frame_index + 1))
+    
+    return accumulated_dose
+
+
 def _create_movie_frames(
-    z_section, 
-    acquisition_metadata, 
+    z_section: metadata_parsing.ZValueSection, 
+    acquisition_metadata: metadata_parsing.AcquisitionMetadata, 
     image_dimensions: list[int] | None
 ) -> list[cets_models.MovieFrame]:
     """Create MovieFrame objects for all frames in a movie stack."""
@@ -195,13 +216,15 @@ def _create_movie_frames(
     movie_frames = []
     
     for f in range(num_frames):
-        movie_frame_section = f"{f:03d}"
+        movie_frame_section = f
         
-        # TODO: check how to calculate accumulated dose per frame
+        accumulated_dose = _calculate_movie_frame_accumulated_dose(z_section, f)
+
         # TODO: allow for individual frame paths if available
         movie_frame = cets_models.MovieFrame.model_construct(
             section=movie_frame_section, 
             nominal_tilt_angle=acquisition_metadata.tilt_angle, 
+            accumulated_dose=accumulated_dose, 
             width=image_dimensions[0] if image_dimensions else None, 
             height=image_dimensions[1] if image_dimensions else None
         )
@@ -210,8 +233,28 @@ def _create_movie_frames(
     return movie_frames
 
 
+def _calculate_tilt_image_accumulated_dose(
+    z_section: metadata_parsing.ZValueSection
+) -> float:
+    """Calculate accumulated dose for a tilt image."""    
+    metadata = z_section.metadata
+    
+    # Dose accumulated before this tilt angle started
+    # (includes any scout/focus images taken before the series)
+    prior_dose = float(metadata["PriorRecordDose"])
+    
+    frame_doses_and_number = metadata["FrameDosesAndNumber"].split()
+    dose_per_frame = float(frame_doses_and_number[0])
+    num_frames = int(frame_doses_and_number[1])
+    
+    # Accumulated dose up to and including this image
+    accumulated_dose = prior_dose + (dose_per_frame * num_frames)
+    
+    return accumulated_dose
+
+
 def _create_tilt_image_for_section(
-    z_section, 
+    z_section: metadata_parsing.ZValueSection, 
     region: yaml_parsing.RegionDefinition, 
     accession_no: str, 
     movie_stack_id: str, 
@@ -234,13 +277,16 @@ def _create_tilt_image_for_section(
             empiar_files=empiar_files
         )
     
-    section_index = f"{z_section.z_value:03d}"
+    section_index = z_section.z_value
+
+    accumulated_dose = _calculate_tilt_image_accumulated_dose(z_section)
     
     return cets_models.TiltImage.model_construct(
         movie_stack_id=movie_stack_id, 
         path=tilt_image_path, 
         section=section_index, 
         nominal_tilt_angle=acquisition_metadata.tilt_angle, 
+        accumulated_dose=accumulated_dose, 
         width=image_dimensions[0] if image_dimensions else None, 
         height=image_dimensions[1] if image_dimensions else None
     )

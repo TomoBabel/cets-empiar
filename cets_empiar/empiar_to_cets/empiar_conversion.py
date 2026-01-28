@@ -55,26 +55,3 @@ def convert_empiar_entry_to_cets(
     )
     cets_dataset = cets_models.Dataset.model_validate(cets_dataset.model_dump())
     save_cets_model_to_json(accession_id, cets_dataset)
-
-
-
-
-#     if region.alignments:
-#         alignment_metadata = load_xf_file(
-#             accession_id, 
-#             region.alignments.file_pattern, 
-#             region.alignments.label
-#         )
-#         cets_alignments = alignment.create_cets_alignment_from_alignment_metadata(alignment_metadata)
-#         cets_region["alignments"] = cets_alignments
-
-    
-#     if region.annotations:
-#         cets_annotations = annotation.create_cets_annotations_from_region_definition(
-#             accession_id, 
-#             region, 
-#             cets_tomograms
-#         )
-#         cets_region["annotations"] = cets_annotations
-
-#     return cets_region

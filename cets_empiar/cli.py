@@ -4,9 +4,7 @@ from pathlib import Path
 from rich.logging import RichHandler
 from typing import Annotated, Optional
 
-from cets_empiar.cets_to_ro_crate import cets_conversion
 from cets_empiar.empiar_to_cets import empiar_conversion
-from cets_empiar.settings import get_settings
 from cets_empiar.thumbnails import cets_data_thumbnail_generation
 from cets_empiar.validation import validation
 
@@ -95,15 +93,18 @@ def create_thumbnail_images(
 
 @cets_empiar.command("validate")
 def validate_cets_data(
-    accession_id: Annotated[
-        str, 
-        typer.Argument(
-        help="The EMPIAR accession ID for the CETS object to validate."
+    cets_path: Annotated[
+        Path, 
+        typer.Option(
+            "--cets-path", 
+            "-cp", 
+            case_sensitive=False, 
+            help="Path to EMPIAR CETS json file."
         )
-    ],
+    ]
 ): 
     
-    validation.validate_cets(accession_id)
+    validation.validate_cets(cets_path)
 
 
 if __name__ == "__main__":

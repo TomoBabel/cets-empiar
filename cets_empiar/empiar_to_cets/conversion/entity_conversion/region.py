@@ -25,13 +25,15 @@ def create_cets_region(
         empiar_files, 
         metadata_file
     )
-
+    
     cets_tomogram = tomogram.create_cets_tomogram(
         accession_id, 
         region, 
         empiar_files, 
         cets_tilt_series.id
     )
+
+    # TODO: annotations (and alignments?) once coorinate systems and transformations are finalised
 
     cets_region = cets_models.Region.model_construct(
         id=region.name, 
