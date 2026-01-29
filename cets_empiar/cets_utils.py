@@ -34,16 +34,16 @@ def get_model_type_dir(output_dirpath, model: Type[BaseModel]) -> Path:
 
 def save_cets_model_to_json(
     region_title: str, 
-    cets_model: BaseModel,
+    cets_model: BaseModel, 
+    cets_output_dir: Path
 ) -> None:
     
     if not isinstance(cets_model, BaseModel):
         raise TypeError("Object must be a Pydantic model")
     
-    default_cets_output_dir = get_settings().default_cets_output_dir
-    default_cets_output_dir.mkdir(exist_ok=True, parents=True)
+    cets_output_dir.mkdir(exist_ok=True, parents=True)
 
-    model_dir = get_model_type_dir(default_cets_output_dir, cets_model.__class__)
+    model_dir = get_model_type_dir(cets_output_dir, cets_model.__class__)
     model_dir.mkdir(parents=True, exist_ok=True)
     
     model_path = model_dir / f"{region_title}.json"

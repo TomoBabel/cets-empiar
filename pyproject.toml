@@ -9,7 +9,7 @@ packages = [{include = "cets_empiar"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 bia-shared-datamodels = { git = "https://github.com/BioImage-Archive/bia-integrator.git", branch = "main", subdirectory = "bia-shared-datamodels" }
-cets_data_model =  { path = "/Users/rookyard/projects/TomoBabel/cets-data-models", develop = true }
+cets_data_model = { git = "https://github.com/TomoBabel/cets-data-models.git", branch = "entity_id_fields" }
 
 pillow = "^11.1.0"
 pydantic = "^2.11.7"

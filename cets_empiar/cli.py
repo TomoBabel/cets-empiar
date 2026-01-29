@@ -5,9 +5,9 @@ from rich.logging import RichHandler
 from typing import Annotated, Optional
 
 from cets_empiar.empiar_to_cets import empiar_conversion
+from cets_empiar.settings import get_settings
 from cets_empiar.thumbnails import cets_data_thumbnail_generation
 from cets_empiar.validation import validation
-
 
 cets_empiar = typer.Typer()
 
@@ -18,6 +18,8 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger()
+
+settings = get_settings()
 
 
 @cets_empiar.command("empiar-to-cets")
@@ -30,20 +32,41 @@ def convert_empiar_to_cets(
             case_sensitive=False, 
             help="Path to EMPIAR definition yaml file."
         )
-    ]
+    ], 
+    cets_output_dir: Annotated[
+        Optional[Path], 
+        typer.Option(
+            "--cets-output-dir", 
+            "-cod", 
+            case_sensitive=False, 
+            help="Directory for output CETS json file. If not provided, will be saved in default output directory."
+        )
+    ] = settings.default_cets_output_dir
 ):
     
-    empiar_conversion.convert_empiar_entry_to_cets(definition_path)
+    empiar_conversion.convert_empiar_entry_to_cets(definition_path, cets_output_dir)
 
 
 @cets_empiar.command("create-thumbnails")
 def create_thumbnail_images(
-    accession_id: Annotated[
-        str, 
-        typer.Argument(
-            help="The EMPIAR accession ID for the CETS object to create thumbnails for."
+    cets_path: Annotated[
+        Path, 
+        typer.Option(
+            "--cets-path", 
+            "-cp", 
+            case_sensitive=False, 
+            help="Path to EMPIAR CETS json file."
         )
-    ],
+    ], 
+    cets_output_dir: Annotated[
+        Optional[Path], 
+        typer.Option(
+            "--cets-output-dir", 
+            "-cod", 
+            case_sensitive=False, 
+            help="Directory for output thumbnail. If not provided, will be saved in default output directory."
+        )
+    ] = settings.default_cets_output_dir, 
     thumbnail_size: Annotated[
         Optional[tuple[int, int]], 
         typer.Option(
@@ -83,7 +106,8 @@ def create_thumbnail_images(
 ):
 
     cets_data_thumbnail_generation.create_cets_data_thumbnails(
-        accession_id, 
+        cets_path, 
+        cets_output_dir, 
         thumbnail_size, 
         projection_method, 
         limit_projection, 

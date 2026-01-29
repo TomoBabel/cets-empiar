@@ -69,7 +69,9 @@ def create_tomogram_thumbnail(
 
 
 def process_tomogram_thumbnail(
-        accession_id: str, 
+        dataset_name: str, 
+        region_id: str, 
+        cets_output_dir: Path, 
         tomograms: list, 
         annotations: Union[list, None], 
         thumbnail_size: tuple[int, int], 
@@ -78,13 +80,12 @@ def process_tomogram_thumbnail(
         limit_annotation: float, 
 ):
     
-    default_cets_output_dir = get_settings().default_cets_output_dir
     default_cache_dir = get_settings().default_cache_dir
 
-    output_dir = default_cets_output_dir / f"/{accession_id}/thumbnails"
+    output_dir = cets_output_dir / "thumbnails" / dataset_name / region_id
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    cache_dirpath = default_cache_dir / f"{accession_id}"/"files"
+    cache_dirpath = default_cache_dir / dataset_name / "files"
     cache_dirpath.mkdir(exist_ok=True, parents=True)
 
     for tomogram in tomograms:
@@ -136,26 +137,33 @@ def process_tomogram_thumbnail(
 
 
 def create_cets_data_thumbnails(
-        accession_id: str, 
+        cets_path: Path, 
+        cets_output_dir: Path, 
         thumbnail_size: tuple[int, int], 
         projection_method: ProjectionMethod, 
         limit_projection: float, 
         limit_annotation: float
 ):
 
-    dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")
-    if not os.path.exists(dataset_file_path):
-        raise FileNotFoundError(f"File {dataset_file_path} not found.")
+    if not os.path.exists(cets_path):
+        raise FileNotFoundError(f"File {cets_path} not found.")
 
-    with open(dataset_file_path, 'r') as f:
+    with open(cets_path, 'r') as f:
         dataset_dict = json.load(f)
     
     dict_to_cets_model(dataset_dict, Dataset)
 
+    dataset_name = dataset_dict["name"]
+
     for region in dataset_dict["regions"]:
         if region["tomograms"] is not None:
+
+            region_id = region["id"]
+
             process_tomogram_thumbnail(
-                accession_id, 
+                dataset_name, 
+                region_id, 
+                cets_output_dir, 
                 region["tomograms"], 
                 region["annotations"], 
                 thumbnail_size, 

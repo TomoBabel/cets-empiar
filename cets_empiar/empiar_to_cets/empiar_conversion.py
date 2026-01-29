@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def convert_empiar_entry_to_cets(
-    definition_path: Path
+    definition_path: Path, 
+    cets_output_dir: Path
 ):
     """
     Convert an EMPIAR entry to CETS data.
@@ -54,4 +55,4 @@ def convert_empiar_entry_to_cets(
         regions=cets_regions
     )
     cets_dataset = cets_models.Dataset.model_validate(cets_dataset.model_dump())
-    save_cets_model_to_json(accession_id, cets_dataset)
+    save_cets_model_to_json(accession_id, cets_dataset, cets_output_dir)

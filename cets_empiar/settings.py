@@ -20,9 +20,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    default_empiar_definition_dir: Path = Field(Path(__file__).parents[1] / "definition_files/empiar")
     default_cets_output_dir: Path = Field(Path(__file__).parents[1] / "output_data/CETS")
-    default_ro_crate_output_dir: Path = Field(Path(__file__).parents[1] / "output_data/RO_Crate")
     default_cache_dir: Path = Path.home() / ".cache" / "cets-empiar"
 
 
