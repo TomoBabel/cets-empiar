@@ -16,7 +16,11 @@ def create_cets_tilt_and_movie_families(
 ) -> tuple[cets_models.MovieStackCollection, cets_models.TiltSeries]:
 
     if metadata is None:
-        raise NotImplementedError(f"Metadata-free route not ready yet for tilt series and movie stacks, in '{region.name}' in accession '{accession_id}'")
+        cets_movie_stack_collection, cets_tilt_series = create_cets_tilt_and_movie_families_without_metadata(
+            accession_id, 
+            region, 
+            empiar_files
+        )
     else:
         cets_movie_stack_collection, cets_tilt_series = create_cets_tilt_and_movie_families_with_metadata(
             accession_id, 
@@ -26,6 +30,70 @@ def create_cets_tilt_and_movie_families(
         )
 
     return cets_movie_stack_collection, cets_tilt_series
+
+
+def create_cets_tilt_and_movie_families_without_metadata(
+    accession_id: str, 
+    region: yaml_parsing.RegionDefinition, 
+    empiar_files: empiar_utils.EMPIARFileList
+) -> tuple[cets_models.MovieStackCollection, cets_models.TiltSeries]:
+    """
+    Create minimal CETS MovieStackCollection and TiltSeries objects without metadata.
+    
+    Args:
+        accession_id (str): EMPIAR accession ID
+        region (yaml_parsing.RegionDefinition): Region definition from YAML
+        empiar_files (empiar_utils.EMPIARFileList): List of EMPIAR files for the entry
+    
+    Returns:
+        tuple[cets_models.MovieStackCollection, cets_models.TiltSeries]:
+            The created MovieStackCollection and TiltSeries CETS objects with minimal information.
+    """
+    accession_no = accession_id.split("-")[1]
+    
+    tilt_series_paths = empiar_utils.get_files_matching_pattern(
+        empiar_files, 
+        region.tilt_series_file_pattern
+    )
+    is_single_stack_file = len(tilt_series_paths) == 1
+    
+    movie_stack_paths = []
+    if region.movie_stack_file_pattern:
+        try:
+            movie_stack_paths = empiar_utils.get_files_matching_pattern(
+                empiar_files, 
+                region.movie_stack_file_pattern
+            )
+        except ValueError:
+            logger.warning(f"No movie stack files found for pattern: {region.movie_stack_file_pattern}")
+    
+    movie_stacks = []
+    for idx, movie_stack_path in enumerate(movie_stack_paths):
+        movie_stack_id = f"{region.name}_movie_stack_{idx:03d}"
+        movie_stack_url = f"{empiar_utils.EMPIAR_BASE_URL}{accession_no}/data/{movie_stack_path}"
+        
+        movie_stack = cets_models.MovieStack.model_construct(
+            id=movie_stack_id,
+            path=movie_stack_url,
+            images=[]
+        )
+        movie_stacks.append(movie_stack)
+    
+    movie_stack_collection = _create_movie_stack_collection(
+        region_name=region.name,
+        movie_stacks=movie_stacks
+    )
+    
+    # Create minimal tilt series with empty images list
+    tilt_series = _create_tilt_series(
+        region_name=region.name,
+        accession_no=accession_no,
+        tilt_series_paths=tilt_series_paths,
+        is_single_stack_file=is_single_stack_file, 
+        images=[]
+    )
+    
+    return movie_stack_collection, tilt_series
 
 
 def create_cets_tilt_and_movie_families_with_metadata(
@@ -167,6 +235,9 @@ def _create_movie_stack_for_section(
         image_dimensions=image_dimensions
     )
     
+    # TODO: this ties in a particular z-section with an empiar file, 
+    # but if it fails, could fall back to matching pattern with files (as in no-metadata route), 
+    # and assume correspondence with z-sections?
     subframe_path = z_section.metadata.get("SubFramePath")
     z_section_empiar_path, _ = metadata_parsing.match_mdoc_path_to_empiar(
         subframe_path, 

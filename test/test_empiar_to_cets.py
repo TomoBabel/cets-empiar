@@ -22,9 +22,15 @@ def output_data_dir():
 
 
 @pytest.fixture
-def test_definition_path(input_data_dir):
+def test_with_metadata_definition_path(input_data_dir):
     """Path to simulated definition YAML"""
-    return input_data_dir / "test_definition.yaml"
+    return input_data_dir / "test_with_metadata_definition.yaml"
+
+
+@pytest.fixture
+def test_without_metadata_definition_path(input_data_dir):
+    """Path to simulated definition YAML"""
+    return input_data_dir / "test_without_metadata_definition.yaml"
 
 
 @pytest.fixture
@@ -43,9 +49,16 @@ def mdoc_content(input_data_dir):
 
 
 @pytest.fixture
-def expected_cets_output(output_data_dir):
+def expected_cets_output_with_metadata(output_data_dir):
     """Load expected CETS output"""
-    with open(output_data_dir / "expected_cets_output.json") as f:
+    with open(output_data_dir / "expected_cets_output_with_metadata.json") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def expected_cets_output_without_metadata(output_data_dir):
+    """Load expected CETS output"""
+    with open(output_data_dir / "expected_cets_output_without_metadata.json") as f:
         return json.load(f)
 
 
@@ -65,11 +78,11 @@ def temp_output_dir():
         yield Path(tmpdir)
 
 
-def test_empiar_to_cets_conversion(
-    test_definition_path,
+def test_empiar_to_cets_conversion_with_metadata(
+    test_with_metadata_definition_path,
     empiar_file_list,
     mdoc_content,
-    expected_cets_output,
+    expected_cets_output_with_metadata,
     mock_mrc_header,
     temp_output_dir
 ):
@@ -93,7 +106,7 @@ def test_empiar_to_cets_conversion(
                 mock_read_mrc.return_value = mock_mrc_header
                 
                 empiar_conversion.convert_empiar_entry_to_cets(
-                    definition_path=test_definition_path,
+                    definition_path=test_with_metadata_definition_path,
                     cets_output_dir=temp_output_dir
                 )
                 
@@ -103,11 +116,11 @@ def test_empiar_to_cets_conversion(
                 with open(output_path) as f:
                     actual_output = json.load(f)
                 
-                assert actual_output["name"] == expected_cets_output["name"]
-                assert len(actual_output["regions"]) == len(expected_cets_output["regions"])
+                assert actual_output["name"] == expected_cets_output_with_metadata["name"]
+                assert len(actual_output["regions"]) == len(expected_cets_output_with_metadata["regions"])
                 
                 actual_region = actual_output["regions"][0]
-                expected_region = expected_cets_output["regions"][0]
+                expected_region = expected_cets_output_with_metadata["regions"][0]
                 
                 assert actual_region["id"] == expected_region["id"]
                 
@@ -134,6 +147,65 @@ def test_empiar_to_cets_conversion(
                 assert actual_tomogram["depth"] == expected_tomogram["depth"]
                 
                 Path(tmp_mdoc_path).unlink()
+
+
+def test_empiar_to_cets_conversion_without_metadata(
+    test_without_metadata_definition_path,
+    empiar_file_list,
+    expected_cets_output_without_metadata,
+    mock_mrc_header,
+    temp_output_dir
+):
+    """Test complete EMPIAR to CETS conversion"""
+    
+    # Mock EMPIAR file list retrieval
+    with patch('cets_empiar.empiar_to_cets.empiar_conversion.empiar_utils.get_files_for_empiar_entry_cached') as mock_get_files:
+        mock_get_files.return_value = empiar_file_list
+        
+        # Mock MRC header reading
+        with patch('cets_empiar.empiar_to_cets.conversion.entity_conversion.tomogram.read_mrc_header') as mock_read_mrc:
+            mock_read_mrc.return_value = mock_mrc_header
+            
+            empiar_conversion.convert_empiar_entry_to_cets(
+                definition_path=test_without_metadata_definition_path,
+                cets_output_dir=temp_output_dir
+            )
+            
+            output_path = temp_output_dir / "dataset" / "EMPIAR-99999.json"
+            assert output_path.exists(), "CETS output file not created"
+            
+            with open(output_path) as f:
+                actual_output = json.load(f)
+            
+            assert actual_output["name"] == expected_cets_output_without_metadata["name"]
+            assert len(actual_output["regions"]) == len(expected_cets_output_without_metadata["regions"])
+            
+            actual_region = actual_output["regions"][0]
+            expected_region = expected_cets_output_without_metadata["regions"][0]
+            
+            assert actual_region["id"] == expected_region["id"]
+            
+            actual_stacks = actual_region["movie_stack_collection"]["movie_stacks"][0]["stacks"]
+            expected_stacks = expected_region["movie_stack_collection"]["movie_stacks"][0]["stacks"]
+            
+            assert len(actual_stacks) == len(expected_stacks)
+            
+            assert actual_stacks[0]["id"] == expected_stacks[0]["id"]
+            assert len(actual_stacks[0]["images"]) == len(expected_stacks[0]["images"])
+            
+            actual_tilt_series = actual_region["tilt_series"][0]
+            expected_tilt_series = expected_region["tilt_series"][0]
+            
+            assert actual_tilt_series["id"] == expected_tilt_series["id"]
+            assert len(actual_tilt_series["images"]) == len(expected_tilt_series["images"])
+            
+            actual_tomogram = actual_region["tomograms"][0]
+            expected_tomogram = expected_region["tomograms"][0]
+            
+            assert actual_tomogram["id"] == expected_tomogram["id"]
+            assert actual_tomogram["width"] == expected_tomogram["width"]
+            assert actual_tomogram["height"] == expected_tomogram["height"]
+            assert actual_tomogram["depth"] == expected_tomogram["depth"]
 
 
 def test_mdoc_parsing(mdoc_content):

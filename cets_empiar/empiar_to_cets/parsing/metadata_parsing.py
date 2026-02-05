@@ -285,10 +285,9 @@ def match_mdoc_path_to_empiar(
         empiar_files: List of EMPIAR files to search
         
     Returns:
-        Matching EMPIAR file path, or None if no match found
+        Matching EMPIAR file path, values from subframe path that match pattern
     """
 
-    # path separators 
     normalized_mdoc_path = re.sub(r'[\\]+', '/', mdoc_subframe_path)
     
     result = parse.parse(filter_pattern, normalized_mdoc_path.split("/")[-1])

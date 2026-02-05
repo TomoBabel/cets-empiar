@@ -1,12 +1,11 @@
-import os
 import logging
 
 from pathlib import Path
-from pydantic import Field, AliasChoices
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-logger = logging.getLogger("__main__." + __name__)
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -20,7 +19,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    default_cets_output_dir: Path = Field(Path(__file__).parents[1] / "output_data/CETS")
+    default_cets_output_dir: Path = Field(Path(__file__).parents[1] / "output/CETS")
     default_cache_dir: Path = Path.home() / ".cache" / "cets-empiar"
 
 

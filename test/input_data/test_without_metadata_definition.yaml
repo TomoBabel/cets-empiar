@@ -1,0 +1,7 @@
+accession_id: EMPIAR-99999
+regions:
+  - name: TestRegion_TS_001
+    tomogram_file_pattern: test_data/tomograms/TS_001.mrc
+    tilt_series_file_pattern: test_data/tiltseries/TS_001.st
+    movie_stack_file_pattern: test_data/frames/TS_001_{}_{}.tif
+    movie_stack_filter_pattern: TS_001_{}_{}.tif

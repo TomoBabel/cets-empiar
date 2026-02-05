@@ -2,7 +2,7 @@ import cets_data_model.models.models as cets_models
 import logging
 from pathlib import Path
 
-from cets_empiar.cets_utils import dict_to_cets_model, save_cets_model_to_json
+from cets_empiar.cets_utils import save_cets_model_to_json
 from cets_empiar.empiar_to_cets.parsing import yaml_parsing
 from cets_empiar.empiar_to_cets.utils import empiar_utils
 from cets_empiar.empiar_to_cets.utils import metadata_utils
@@ -21,7 +21,7 @@ def convert_empiar_entry_to_cets(
     
     Args:
         definition_path: Path to the definition YAML file for the EMPIAR entry.
-        process_mode: Whether STANDARD or WITH_MDOC, depending on whether mdoc files are available.
+        cets_output_dir: Path to CETS output json file.
     """
 
     yaml_definition_dict, accession_id = yaml_parsing.load_empiar_definition_yaml(definition_path)
@@ -31,7 +31,8 @@ def convert_empiar_entry_to_cets(
 
     cets_regions = []
     for region_definition in region_definitions:
-
+        
+        metadata_file = None
         if region_definition.metadata_file is not None:
             metadata_file_label = f"{region_definition.name}_metadata_file"
 
