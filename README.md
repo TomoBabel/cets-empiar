@@ -6,17 +6,17 @@ With poetry — from the top level of the cloned repository:
 
     poetry install
 
-There are currently no further configuration steps besides optionally specifying a location for the file cache — this is used only for image data when generating thumbnails (see *Thumbnails*, below), and its default location is specified in `config.py`. It can be changed by entering an alternative location for `cache_root_dirpath` in a .env file, following the example set in the .env_template file here. All other CETS data and associated metadata are saved locally within the repository directory, under "local-data" (see *Output*, below).
+There are currently no further configuration steps besides optionally specifying a location for the file cache — this is used for intermediate data (file lists, images, metadata files, etc.) and its default location is specified in `settings.py`. It can be changed by entering an alternative location for `default_cache_dir` in a .env file, following the example set in the .env_template file here. All output data and are saved locally within the repository directory, under "output" (see *Output*, below).
 
 ## Use
 ### EMPIAR — CETS
 To make CETS objects for an EMPIAR entry:
 
-    poetry run cets-empiar empiar-to-cets -dp <path_to_definition_file>
+    poetry run cets-empiar empiar-to-cets -dp <path/to/definition/file/EMPIAR-XXXXX.yaml>
 
-where there must be a yaml definition file for the given accession ID. The definition file for EMPIAR-12104 is currently the most/best populated, and most convenient to test, [here](./definition_files/empiar_new_ingest/empiar_12104.yaml) — note that the means of populating the CETS object and the definition file format have changed, and so while the old versions are be kept for a while for reference, any new versions should be in `empiar_new_ingest`.
+where the path must lead to a yaml definition file for a given EMPIAR accession ID. The definition file for EMPIAR-12104 is currently the most/best populated, and most convenient to test, found at [/definition_files/empiar_new_ingest/empiar_12104.yaml](./definition_files/empiar_new_ingest/empiar_12104.yaml) — note that the means of populating the CETS object and the definition file format have changed, and so while the old versions of definition files are be kept for a while for reference, any new versions should be in the folder, `empiar_new_ingest`.
 
-The CETS data is saved as a json file under "dataset", and associated metadata (list of EMPIAR files, mdoc, star, and xf files) is also cached, for speedier use if the same command is called again.
+The CETS data is saved as a json file under "dataset", and associated metadata (list of EMPIAR files, mdoc, star, and xf files) is also cached (at `default_cache_dir`), for speedier use if the same command is called again.
 
 It is possible to set the `default_cets_output_dir` and `default_cache_dir`, for the location of created CETS datasets and ancillary files, respectively, via a .env file; the .env_template can be referred to for this. Otherwise, the default CETS output directory can be passed on the command line, and, as in the above example, the path to the definition file must be given. Options are summarised below.
 
@@ -30,7 +30,7 @@ It is possible to set the `default_cets_output_dir` and `default_cache_dir`, for
 ### Thumbnails
 To generate thumbnails from CETS data:
 
-    poetry run cets-empiar create-thumbnails -cp <path_to_CETS_dataset_file>
+    poetry run cets-empiar create-thumbnails -cp <path/to/CETS/dataset.json>
 
 where the specified CETS dataset json file has at least one tomogram. If there are point annotations present in the CETS dataset, then they are superimposed on the thumbnail image. 
 
@@ -80,7 +80,7 @@ is similar to `--limit-projection`, in that you can choose to limit the number o
 ## Validation
 To validate:
 
-    poetry run cets-empiar validate -cp <path_to_CETS_json>
+    poetry run cets-empiar validate -cp <path/to/CETS/dataset.json>
 
 again, EMPIAR-12104, once converted to CETS, can be used as an illustrative case. The path to the CETS json file can also be specified with the long form, `--cets-path`. 
 
@@ -88,6 +88,6 @@ again, EMPIAR-12104, once converted to CETS, can be used as an illustrative case
 The yaml definition files are similar to those used in the EMPIAR ingest, but naturally, have a slightly different (and still developing) format, to assist in parsing EMPIAR data to the CETS specification. 
 
 ## Output
-Output files are stored locally, in the folder "local-data", subfolders of which are named according to EMPIAR accession ID. Of principal interest is the json file that contains the data according to the CETS specification. The models are defined [here](https://github.com/TomoBabel/cets-data-models), specifically, in this [file](https://github.com/TomoBabel/cets-data-models/blob/main/src/cets_data_model/models/models.py).
+Output files are stored locally, in the folder "output", subfolders of which are named according to EMPIAR accession ID. Of principal interest is the json file that contains the data according to the CETS specification. The models are defined [here](https://github.com/TomoBabel/cets-data-models), specifically, in this [file](https://github.com/TomoBabel/cets-data-models/blob/main/src/cets_data_model/models/models.py).
 
 The other output that is saved comprises json files representing the list of all EMPIAR files for the particular entry, and various metadata formats. 
