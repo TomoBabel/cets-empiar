@@ -1,8 +1,0 @@
-accession_id: EMPIAR-12104
-regions:
-  - name: Control_TS_006
-    metadata_file: Control/metadata/mdocs_modified/TS_006.mdoc
-    tomogram_file_pattern: Control/tomograms/TS_006_aretomo.mrc
-    tilt_series_file_pattern: Control/metadata/TS_006.st
-    movie_stack_file_pattern: Control/frames/TS_006_{}_{}.tif
-    movie_stack_filter_pattern: TS_006_{}_{}.tif

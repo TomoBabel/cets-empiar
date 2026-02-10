@@ -1,49 +1,8 @@
 accession_id: EMPIAR-12104
 regions:
-  - name: TS_006
-    movie_metadata:
-      label: TS_006_mdoc_original
-      file_pattern: Control/frames/mdocs_ori/TS_006.mdoc
-    movie_stacks:
-      - label: TS_006_-0-0
-        file_pattern: Control/frames/TS_006_00001_-0.0.tif
-      - label: TS_006_2-0
-        file_pattern: Control/frames/TS_006_00002_2.0.tif
-      - label: TS_006_-2-0
-        file_pattern: Control/frames/TS_006_00003_-2.0.tif
-    tilt_series_metadata:
-      label: TS_006_mdoc_modified
-      file_pattern: Control/metadata/mdocs_modified/TS_006.mdoc
-    tilt_series:
-      - label: TS_006
-        file_pattern: Control/metadata/TS_006.st
-
-    alignments:
-      label: TS_006_xf
-      file_pattern: Control/metadata/TS_006.xf
-    tomograms:
-      - label: TS_006_tomo
-        file_pattern: Control/tomograms/TS_006_aretomo.mrc
-    annotations:
-      - label: TS_006_star
-        annotation_type: point_set_3D
-        file_name: Control/particle_lists/all_ribo_cleaned.star
-        image_name: TS_006.tomostar
-        default_coordinate_system: default_image_voxel
-  - name: TS_007
-    movie_metadata:
-      label: TS_007_mdoc_original
-      file_pattern: Control/frames/mdocs_ori/TS_007.mdoc
-    movie_stacks:
-      - label: TS_007_0-0
-        file_pattern: Control/frames/TS_007_00001_-0.0.tif
-      - label: TS_007_2-0
-        file_pattern: Control/frames/TS_007_00002_2.0.tif
-      - label: TS_007_-2-0
-        file_pattern: Control/frames/TS_007_00003_-2.0.tif
-    tilt_series_metadata:
-      label: TS_007_mdoc_modified
-      file_pattern: Control/metadata/mdocs_modified/TS_007.mdoc
-    tilt_series:
-      - label: TS_007
-        file_pattern: Control/metadata/TS_007.st
+  - name: Control_TS_006
+    metadata_file: Control/metadata/mdocs_modified/TS_006.mdoc
+    tomogram_file_pattern: Control/tomograms/TS_006_aretomo.mrc
+    tilt_series_file_pattern: Control/metadata/TS_006.st
+    movie_stack_file_pattern: Control/frames/TS_006_{}_{}.tif
+    movie_stack_filter_pattern: TS_006_{}_{}.tif
