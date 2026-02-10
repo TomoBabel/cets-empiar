@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "path": "test_data/metadata/TS_001.mdoc",
+      "size_in_bytes": 5000
+    },
+    {
+      "path": "test_data/tomograms/TS_001.mrc",
+      "size_in_bytes": 100000000
+    },
+    {
+      "path": "test_data/tiltseries/TS_001.st",
+      "size_in_bytes": 50000000
+    },
+    {
+      "path": "test_data/frames/TS_001_00001_0.0.tif",
+      "size_in_bytes": 5000000
+    },
+    {
+      "path": "test_data/frames/TS_001_00002_2.0.tif",
+      "size_in_bytes": 5000000
+    },
+    {
+      "path": "test_data/frames/TS_001_00003_-2.0.tif",
+      "size_in_bytes": 5000000
+    }
+  ]
+}

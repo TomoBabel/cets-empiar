@@ -1,0 +1,62 @@
+{
+  "filename": "test/input_data/TS_001.mdoc",
+  "tilt_axis_angle": 85.0,
+  "binning": 1,
+  "image_size": [
+    3840,
+    2730
+  ],
+  "pixel_spacing": 2.15,
+  "data_mode": null,
+  "voltage": null,
+  "z_sections": [
+    {
+      "z_value": 0,
+      "tilt_angle": 0.0,
+      "sub_frame_path": "test_data\\frames\\TS_001_00001_0.0.tif",
+      "num_sub_frames": 5,
+      "prior_record_dose": 0.0,
+      "frame_doses_and_number": [
+        0.5,
+        5.0
+      ],
+      "exposure_dose": 2.5,
+      "stage_position": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "z_value": 1,
+      "tilt_angle": 2.0,
+      "sub_frame_path": "test_data\\frames\\TS_001_00002_2.0.tif",
+      "num_sub_frames": 5,
+      "prior_record_dose": 2.5,
+      "frame_doses_and_number": [
+        0.5,
+        5.0
+      ],
+      "exposure_dose": 2.5,
+      "stage_position": [
+        0.1,
+        0.0
+      ]
+    },
+    {
+      "z_value": 2,
+      "tilt_angle": -2.0,
+      "sub_frame_path": "test_data\\frames\\TS_001_00003_-2.0.tif",
+      "num_sub_frames": 5,
+      "prior_record_dose": 5.0,
+      "frame_doses_and_number": [
+        0.5,
+        5.0
+      ],
+      "exposure_dose": 2.5,
+      "stage_position": [
+        -0.1,
+        0.0
+      ]
+    }
+  ]
+}

@@ -1,16 +1,15 @@
 import logging
 import typer
+from pathlib import Path
 from rich.logging import RichHandler
 from typing import Annotated, Optional
 
-from cets_empiar.validation.validation import validate_cets
+from cets_empiar.empiar_to_cets import empiar_conversion
+from cets_empiar.settings import get_settings
+from cets_empiar.thumbnails import cets_data_thumbnail_generation
+from cets_empiar.validation import validation
 
-from cets_empiar.empiar_to_cets.empiar_conversion import convert_empiar_entry_to_cets_dataset
-from cets_empiar.thumbnails.cets_data_thumbnail_generation import ProjectionMethod, create_cets_data_thumbnails
-
-
-app = typer.Typer()
-
+cets_empiar = typer.Typer()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,81 +19,117 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+settings = get_settings()
 
-@app.command("empiar-to-cets")
+
+@cets_empiar.command("empiar-to-cets")
 def convert_empiar_to_cets(
-        accession_id: Annotated[
-            str, 
-            typer.Argument(
-                help="The EMPIAR accession ID for the entry to be converted."
-            )
-        ],
+    definition_path: Annotated[
+        Path, 
+        typer.Option(
+            "--definition-path", 
+            "-dp", 
+            case_sensitive=False, 
+            help="Path to EMPIAR definition yaml file."
+        )
+    ], 
+    cets_output_dir: Annotated[
+        Optional[Path], 
+        typer.Option(
+            "--cets-output-dir", 
+            "-cod", 
+            case_sensitive=False, 
+            help="Directory for output CETS json file. If not provided, will be saved in default output directory."
+        )
+    ] = settings.default_cets_output_dir
 ):
     
-    convert_empiar_entry_to_cets_dataset(accession_id)
+    empiar_conversion.convert_empiar_entry_to_cets(definition_path, cets_output_dir)
 
 
-@app.command("create-thumbnails")
+@cets_empiar.command("create-thumbnails")
 def create_thumbnail_images(
-        accession_id: Annotated[
-            str, 
-            typer.Argument(
-                help="The EMPIAR accession ID for the CETS object to create thumbnails for."
-            )
-        ],
-        thumbnail_size: Annotated[
-            Optional[tuple[int, int]], 
-            typer.Option(
-                "--thumbnail-size", 
-                "-t", 
-                help="Size of the output thumbnails in pixels, as [x, y]. Deafult is [256, 256].",
-            )
-        ] = (256, 256),
-        projection_method: Annotated[
-            Optional[ProjectionMethod], 
-            typer.Option(
-                "--projection-method", 
-                "-p",
-                help="Method for projection on z-axis, must be one of 'max', 'mean', or 'middle'. Default is max.",
-            )
-        ] = "max",
-        limit_projection: Annotated[
-            Optional[float], 
-            typer.Option(
-                "--limit-projection", 
-                "-lp", 
-                min=0.0, 
-                max=1.0, 
-                help="Proportion of slices to project over, about the central slice of the tomogram. Defailt is 0.5 (half slices).",
-            )
-        ] = 0.5,
-        limit_annotation: Annotated[
-            Optional[float], 
-            typer.Option(
-                "--limit-annotation", 
-                "-la", 
-                min=0.0, 
-                max=1.0, 
-                help="Proportion of annotation points to accept, about the central slice of the tomogram. Default is 0.5 (half depth).",
-            )
-        ] = 0.5,
+    cets_path: Annotated[
+        Path, 
+        typer.Option(
+            "--cets-path", 
+            "-cp", 
+            case_sensitive=False, 
+            help="Path to EMPIAR CETS json file."
+        )
+    ], 
+    cets_output_dir: Annotated[
+        Optional[Path], 
+        typer.Option(
+            "--cets-output-dir", 
+            "-cod", 
+            case_sensitive=False, 
+            help="Directory for output thumbnail. If not provided, will be saved in default output directory."
+        )
+    ] = settings.default_cets_output_dir, 
+    thumbnail_size: Annotated[
+        Optional[tuple[int, int]], 
+        typer.Option(
+            "--thumbnail-size", 
+            "-t", 
+            help="Size of the output thumbnails in pixels, as [x, y]. Deafult is [256, 256].",
+        )
+    ] = (256, 256),
+    projection_method: Annotated[
+        Optional[cets_data_thumbnail_generation.ProjectionMethod], 
+        typer.Option(
+            "--projection-method", 
+            "-p",
+            help="Method for projection on z-axis, must be one of 'max', 'mean', or 'middle'. Default is max.",
+        )
+    ] = "max",
+    limit_projection: Annotated[
+        Optional[float], 
+        typer.Option(
+            "--limit-projection", 
+            "-lp", 
+            min=0.0, 
+            max=1.0, 
+            help="Proportion of slices to project over, about the central slice of the tomogram. Defailt is 0.5 (half slices).",
+        )
+    ] = 0.5,
+    limit_annotation: Annotated[
+        Optional[float], 
+        typer.Option(
+            "--limit-annotation", 
+            "-la", 
+            min=0.0, 
+            max=1.0, 
+            help="Proportion of annotation points to accept, about the central slice of the tomogram. Default is 0.5 (half depth).",
+        )
+    ] = 0.5,
 ):
 
-    create_cets_data_thumbnails(accession_id, thumbnail_size, projection_method, limit_projection, limit_annotation)
+    cets_data_thumbnail_generation.create_cets_data_thumbnails(
+        cets_path, 
+        cets_output_dir, 
+        thumbnail_size, 
+        projection_method, 
+        limit_projection, 
+        limit_annotation, 
+    )
 
 
-@app.command("validate")
+@cets_empiar.command("validate")
 def validate_cets_data(
-    accession_id: Annotated[
-        str, 
-        typer.Argument(
-        help="The EMPIAR accession ID for the CETS object to validate."
+    cets_path: Annotated[
+        Path, 
+        typer.Option(
+            "--cets-path", 
+            "-cp", 
+            case_sensitive=False, 
+            help="Path to EMPIAR CETS json file."
         )
-    ],
+    ]
 ): 
     
-    validate_cets(accession_id)
+    validation.validate_cets(cets_path)
 
 
 if __name__ == "__main__":
-    app()
+    cets_empiar()

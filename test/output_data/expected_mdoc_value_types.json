@@ -1,0 +1,27 @@
+{
+  "filename": "test/input_data/TS_value_types.mdoc",
+  "tilt_axis_angle": null,
+  "binning": null,
+  "image_size": null,
+  "pixel_spacing": null,
+  "data_mode": null,
+  "voltage": null,
+  "z_sections": [
+    {
+      "z_value": 0,
+      "tilt_angle": 0.0,
+      "sub_frame_path": "test/path.tif",
+      "num_sub_frames": 5,
+      "prior_record_dose": null,
+      "frame_doses_and_number": [
+        0.95,
+        8.0
+      ],
+      "exposure_dose": null,
+      "stage_position": [
+        1.5,
+        -2.3
+      ]
+    }
+  ]
+}

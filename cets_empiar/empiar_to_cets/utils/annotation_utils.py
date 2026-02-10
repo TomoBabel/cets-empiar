@@ -6,7 +6,7 @@ from pandas import DataFrame
 from pathlib import Path
 
 from cets_empiar.utils import make_local_data_path
-from cets_empiar.empiar_to_cets.utils.empiar_utils import download_file_from_empiar
+from cets_empiar.empiar_to_cets.utils import empiar_utils
 
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,10 @@ def load_and_filter_annotation_star_file(
         file_label=star_label
     )
 
-    if Path(local_data_path).exists():
+    if local_data_path.exists():
         return str(local_data_path)
     
-    temp_star_path = download_file_from_empiar(accession_id, file_name)
+    temp_star_path = empiar_utils.download_file_from_empiar(accession_id, file_name)
 
     try: 
         star_df = starfile.read(temp_star_path)

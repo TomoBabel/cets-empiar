@@ -34,17 +34,20 @@ def validate_cets_annotations(
   
 
 def validate_cets(
-        accession_id: str
+    cets_path: Path
 ):
-    
-    dataset_file_path = Path(f"local-data/{accession_id}/dataset/{accession_id}.json")
-    if not os.path.exists(dataset_file_path):
-        raise FileNotFoundError(f"File {dataset_file_path} not found.")
+    if not os.path.exists(cets_path):
+        raise FileNotFoundError(f"File {cets_path} not found.")
 
-    with open(dataset_file_path, 'r') as f:
+    with open(cets_path, 'r') as f:
         dataset_dict = json.load(f)
 
-    dict_to_cets_model(dataset_dict, Dataset)
+    try:
+        dict_to_cets_model(dataset_dict, Dataset)
+        logger.info("CETS Dataset validation successful.")
+    except ValidationError as e:
+        logger.error(f"CETS Dataset validation failed: {e}")
+        return
 
     for region in dataset_dict["regions"]:
         if (tomograms := region["tomograms"]) is not None and (annotations := region["annotations"]) is not None:

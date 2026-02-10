@@ -8,23 +8,28 @@ packages = [{include = "cets_empiar"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+bia-shared-datamodels = { git = "https://github.com/BioImage-Archive/bia-integrator.git", branch = "main", subdirectory = "bia-shared-datamodels" }
+cets_data_model = { git = "https://github.com/TomoBabel/cets-data-models.git", branch = "entity_id_fields" }
+
 pillow = "^11.1.0"
 pydantic = "^2.11.7"
-rich = "^14.0.0"
-typer = "^0.16.0"
+rich = "^13.0.0"
+typer = "^0.17.0"
 requests = "^2.32.4"
-cets_data_model = { git = "https://github.com/TomoBabel/cets-data-models.git", branch = "add_linkML" }
 ruamel-yaml = "^0.18.14"
-fs = "^2.4.16"
 parse = "^1.20.2"
 pydantic-settings = "^2.10.1"
 gemmi = "^0.7.3"
 starfile = "^0.5.13"
 mrcfile = "^1.5.4"
 numpy = "^2.3.3"
+inflection = "0.5.1"
+pyyaml = "^6.0.3"
+setuptools = "^82.0.0"
+fsspec = "^2026.2.0"
 
 [tool.poetry.scripts]
-cets-empiar = "cets_empiar.cli:app"
+cets-empiar = "cets_empiar.cli:cets_empiar"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

@@ -1,0 +1,30 @@
+{
+  "filename": "test/input_data/TS_snake_case.mdoc",
+  "tilt_axis_angle": null,
+  "binning": null,
+  "image_size": [
+    100,
+    100
+  ],
+  "pixel_spacing": 2.5,
+  "data_mode": 2,
+  "voltage": null,
+  "z_sections": [
+    {
+      "z_value": 0,
+      "tilt_angle": 0.0,
+      "sub_frame_path": "test.tif",
+      "num_sub_frames": 10,
+      "prior_record_dose": 5.0,
+      "frame_doses_and_number": [
+        0.5,
+        10.0
+      ],
+      "exposure_dose": 5.0,
+      "stage_position": [
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

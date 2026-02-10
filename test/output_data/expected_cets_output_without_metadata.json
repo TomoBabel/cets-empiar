@@ -1,0 +1,112 @@
+{
+  "name": "EMPIAR-99999",
+  "regions": [
+    {
+      "id": "TestRegion_TS_001",
+      "movie_stack_collection": {
+        "movie_stacks": [
+          {
+            "id": "TestRegion_TS_001_movie_stack_series",
+            "stacks": [
+              {
+                "id": "TestRegion_TS_001_movie_stack_000",
+                "path":  "https://ftp.ebi.ac.uk/empiar/world_availability/99999/data/test_data/frames/TS_001_00001_0.0.tif",
+                "images": []
+              },
+              {
+                "id": "TestRegion_TS_001_movie_stack_001",
+                "path": "https://ftp.ebi.ac.uk/empiar/world_availability/99999/data/test_data/frames/TS_001_00002_2.0.tif",
+                "images": []
+              },
+              {
+                "id": "TestRegion_TS_001_movie_stack_002",
+                "path": "https://ftp.ebi.ac.uk/empiar/world_availability/99999/data/test_data/frames/TS_001_00003_-2.0.tif",
+                "images": []
+              }
+            ]
+          }
+        ],
+        "gain_file": null,
+        "defect_file": null
+      },
+      "tilt_series": [
+        {
+          "id": "TestRegion_TS_001_tilt_series",
+          "path": "https://ftp.ebi.ac.uk/empiar/world_availability/99999/data/test_data/tiltseries/TS_001.st",
+          "ctf_corrected": null,
+          "even_path": null,
+          "odd_path": null,
+          "images": [],
+          "movie_stack_series_id": "TestRegion_TS_001_movie_stack_series"
+        }
+      ],
+      "alignments": [],
+      "tomograms": [
+        {
+          "width": 500,
+          "height": 500,
+          "depth": 100,
+          "coordinate_systems": [
+            {
+              "name": "default_image_voxel",
+              "axes": [
+                {
+                  "name": "default voxel axis X",
+                  "axis_unit": "voxel",
+                  "axis_type": "array"
+                },
+                {
+                  "name": "default voxel axis Y",
+                  "axis_unit": "voxel",
+                  "axis_type": "array"
+                },
+                {
+                  "name": "default voxel axis Z",
+                  "axis_unit": "voxel",
+                  "axis_type": "array"
+                }
+              ]
+            },
+            {
+              "name": "physical_sampling_angstrom",
+              "axes": [
+                {
+                  "name": "physical sampling angstrom axis X",
+                  "axis_unit": "angstrom",
+                  "axis_type": "space"
+                },
+                {
+                  "name": "physical sampling angstrom axis Y",
+                  "axis_unit": "angstrom",
+                  "axis_type": "space"
+                },
+                {
+                  "name": "physical sampling angstrom axis Z",
+                  "axis_unit": "angstrom",
+                  "axis_type": "space"
+                }
+              ]
+            }
+          ],
+          "coordinate_transformations": [
+            {
+              "transformation_type": "scale",
+              "name": "default_image_voxel_to_physical_sampling_angstrom_scale_10.0_10.0_10.0",
+              "input": "default_image_voxel",
+              "output": "physical_sampling_angstrom",
+              "scale": [10.0, 10.0, 10.0]
+            }
+          ],
+          "id": "TestRegion_TS_001_tomogram",
+          "path": "https://ftp.ebi.ac.uk/empiar/world_availability/99999/data/test_data/tomograms/TS_001.mrc",
+          "ctf_corrected": null,
+          "even_path": null,
+          "odd_path": null,
+          "tilt_series_id": "TestRegion_TS_001_tilt_series"
+        }
+      ],
+      "annotations": []
+    }
+  ],
+  "averages": []
+}

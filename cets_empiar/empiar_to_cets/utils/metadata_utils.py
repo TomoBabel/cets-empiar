@@ -1,20 +1,19 @@
 import json
 import logging
-import re
 import struct
+from fsspec import filesystem
 from pathlib import Path
-from fs.ftpfs import FTPFS
-from typing import Any, Union
+from typing import Any
 
-from cets_empiar.utils import make_local_data_path
+from cets_empiar.empiar_to_cets.parsing import metadata_parsing
 from cets_empiar.empiar_to_cets.utils.empiar_utils import download_file_from_empiar
-from cets_empiar.empiar_to_cets.utils.metadata_models import MdocFile, ZValueSection
+from cets_empiar.utils import make_local_data_path
 
 
 logger = logging.getLogger(__name__)
 
 
-def save_mdoc_to_json(mdoc: MdocFile, filepath: str) -> None:
+def save_mdoc_to_json(mdoc: metadata_parsing.MdocFile, filepath: str) -> None:
     
     with open(filepath, 'w') as f:
         f.write(mdoc.model_dump_json(indent=2))
@@ -26,10 +25,10 @@ def save_alignment_to_json(alignment: dict[str, Any], filepath: str) -> None:
         json.dump(alignment, f, indent=2)
 
 
-def load_mdoc_from_json(filepath: str) -> MdocFile:
+def load_mdoc_from_json(filepath: str) -> metadata_parsing.MdocFile:
     
     with open(filepath, 'r') as f:
-        return MdocFile.model_validate_json(f.read())
+        return metadata_parsing.MdocFile.model_validate_json(f.read())
 
 
 def load_alignment_from_json(filepath: str) -> dict[str, Any]:
@@ -41,10 +40,10 @@ def load_alignment_from_json(filepath: str) -> dict[str, Any]:
 
 
 def load_mdoc_file(
-        accession_id: str, 
-        file_pattern: str,
-        mdoc_label: str,
-) -> MdocFile:
+    accession_id: str, 
+    file_pattern: str,
+    mdoc_label: str,
+) -> metadata_parsing.MdocFile:
     
     local_data_path = make_local_data_path(
         accession_id, 
@@ -52,14 +51,17 @@ def load_mdoc_file(
         file_label=mdoc_label
     )
     
-    if Path(local_data_path).exists():
-        return load_mdoc_from_json(local_data_path)
+    if local_data_path.exists():
+        return load_mdoc_from_json(str(local_data_path))
 
     temp_mdoc_path = download_file_from_empiar(accession_id, file_pattern)
     
     try:
-        mdoc = parse_mdoc_file(temp_mdoc_path)
-        save_mdoc_to_json(mdoc, local_data_path)
+        mdoc = metadata_parsing.parse_mdoc_file(
+            filepath=temp_mdoc_path,
+            json_output_path=str(local_data_path)
+        )
+        save_mdoc_to_json(mdoc, str(local_data_path))
         
         return mdoc
         
@@ -68,9 +70,9 @@ def load_mdoc_file(
 
 
 def load_xf_file(
-        accession_id: str, 
-        file_pattern: str,
-        xf_label: str,
+    accession_id: str, 
+    file_pattern: str,
+    xf_label: str,
 ) -> dict[str, Any]:
     
     local_data_path = make_local_data_path(
@@ -79,14 +81,14 @@ def load_xf_file(
         file_label=xf_label
     )
     
-    if Path(local_data_path).exists():
-        return load_alignment_from_json(local_data_path)
+    if local_data_path.exists():
+        return load_alignment_from_json(str(local_data_path))
     
     temp_xf_path = download_file_from_empiar(accession_id, file_pattern)
     
     try:
-        alignment = parse_xf_file(temp_xf_path)
-        save_alignment_to_json(alignment, local_data_path)
+        alignment = metadata_parsing.parse_xf_file(temp_xf_path)
+        save_alignment_to_json(alignment, str(local_data_path))
         
         return alignment
         
@@ -94,150 +96,9 @@ def load_xf_file(
         Path(temp_xf_path).unlink()
 
 
-def parse_value(value_str: str) -> Union[str, int, float]:
-    """
-    Parse a string value to appropriate type (int, float, or str)
-    """
-    value_str = value_str.strip()
-    
-    # Try integer first
-    try:
-        return int(value_str)
-    except ValueError:
-        pass
-    
-    # Try float
-    try:
-        return float(value_str)
-    except ValueError:
-        pass
-    
-    # Return as string
-    return value_str
-
-
-def parse_xf_file(
-    filepath: str, 
+def read_mrc_header(
+    filepath: str
 ) -> dict[str, Any]:
-    """
-    Parse an .xf file and return a dictionary with projection alignments 
-    as sequences of affine and translation transformations.
-
-    Each line in the file should contain six values: a11, a12, a21, a22, dx, dy.
-
-    Returns a dictionary with a list of projection alignments.
-    """
-    
-    projection_alignments = []
-    
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
-    
-    for i, line in enumerate(lines):
-        line = line.strip()
-        
-        if not line:
-            continue
-        
-        # Parse the six values: a11 a12 a21 a22 dx dy
-        values = line.split()
-        if len(values) != 6:
-            logger.warning(f"Warning: Line {i+1} has {len(values)} values instead of 6, skipping")
-            continue
-        
-        try:
-            a11, a12, a21, a22, dx, dy = [float(v) for v in values]
-        except ValueError as e:
-            logger.warning(f"Warning: Could not parse line {i+1}: {line}, error: {e}")
-            continue
-        
-        affine_transform = {
-            "type": "affine",
-            "name": f"rotation_projection_{i}",
-            "output": f"rotated_projection_{i}",
-            "affine": [
-                [a11, a12, 0.0],
-                [a21, a22, 0.0],
-                [0.0, 0.0, 1.0]
-            ]
-        }
-        
-        translation_transform = {
-            "type": "translation",
-            "name": f"translation_projection_{i}",
-            "input": f"rotated_projection_{i}",
-            "translation": [dx, dy]
-        }
-        
-        projection_alignment = {
-            "type": "sequence",
-            "name": f"alignment_projection_{i}",
-            "sequence": [affine_transform, translation_transform]
-        }
-        
-        projection_alignments.append(projection_alignment)
-    
-    alignment = {
-        "projection_alignments": projection_alignments
-    }
-    
-    return alignment
-
-
-def parse_mdoc_file(filepath: str) -> MdocFile:
-    """
-    Parse an .mdoc file containing metadata about tilt series and movie frames .
-    Return a MdocFile object.
-    """
-    mdoc = MdocFile(filename=str(filepath))
-    
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        lines = f.readlines()
-    
-    current_section = None
-    in_global_headers = True
-    
-    for line in lines:
-        line = line.strip()
-        
-        # Skip empty lines
-        if not line:
-            continue
-        
-        # Handle comments (lines starting with [T = )
-        if line.startswith('[T =') and line.endswith(']'):
-            # comment = line[4:-1].strip()  # Remove [T = and ]
-            # mdoc.comments.append(comment)
-            continue
-        
-        # Handle ZValue sections
-        z_value_match = re.match(r'\[ZValue\s*=\s*(\d+)\]', line)
-        if z_value_match:
-            z_value = int(z_value_match.group(1))
-            current_section = ZValueSection(z_value=z_value)
-            mdoc.z_sections.append(current_section)
-            in_global_headers = False
-            continue
-        
-        # Handle key-value pairs
-        if '=' in line and not line.startswith('['):
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-            
-            # Parse value to appropriate type
-            parsed_value = parse_value(value)
-            
-            # Add to appropriate section
-            if in_global_headers:
-                mdoc.global_headers[key] = parsed_value
-            elif current_section is not None:
-                current_section.metadata[key] = parsed_value
-    
-    return mdoc
-
-
-def read_mrc_header(filepath):
     """    
     Read metadata from MRC file header from a file located at given filepath.
     Returns a dictionary with header information.
@@ -246,9 +107,9 @@ def read_mrc_header(filepath):
 
     ftp_url = "ftp.ebi.ac.uk"
 
-    with FTPFS(ftp_url) as ftp_fs:
-        with ftp_fs.open(filepath, "rb") as f:
-            header_data = f.read(1024)
+    ftp_fs = filesystem('ftp', host=ftp_url)
+    with ftp_fs.open(filepath, "rb") as f:
+        header_data = f.read(1024)
     
     # Parse MRC header - according to MRC2014 format - https://www.ccpem.ac.uk/mrc-format/mrc2014/
     # TODO: other MRC formats
@@ -270,11 +131,11 @@ def read_mrc_header(filepath):
     
     # pixel size should use sampling dimensions (mx, my, mz), if present,
     # # in case image is cropped, not image dimensions (nx, ny, nz) — see block above
-    pixel_size = (
+    pixel_size = [
         cell_dims[0] / mx, 
         cell_dims[1] / my, 
         cell_dims[2] / mz
-    )
+    ]
 
     return {
         "dimensions": (nx, ny, nz),
