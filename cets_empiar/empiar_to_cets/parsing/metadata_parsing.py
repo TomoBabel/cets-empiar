@@ -1,8 +1,9 @@
+import inflection
 import logging
 import parse
 import re
-from typing import Any, List, Optional, Union
 from pydantic import BaseModel, Field
+from typing import Any, List, Union
 
 from cets_empiar.empiar_to_cets.utils import empiar_utils
 
@@ -15,7 +16,15 @@ class ZValueSection(BaseModel):
     """
 
     z_value: int
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    tilt_angle: float | None = None
+    sub_frame_path: str | None = None
+    num_sub_frames: int | None = None
+    prior_record_dose: float | None = None
+    frame_doses_and_number: list[float] | None = None
+    exposure_dose: float | None = None
+    stage_position: list[float] | None = None
+
+    # TODO: determine frequency/utility of other occurring fields in mdocs
 
 
 class MdocFile(BaseModel):
@@ -24,7 +33,12 @@ class MdocFile(BaseModel):
     """
 
     filename: str
-    global_headers: dict[str, Any] = Field(default_factory=dict)
+    tilt_axis_angle: float | None = None
+    binning: int | None = None
+    image_size: list[int] | None = None
+    pixel_spacing: float | None = None
+    data_mode: int | None = None
+    voltage: float | None = None
     z_sections: list[ZValueSection] = Field(default_factory=list)
 
     def search_by_subframe_path(
@@ -47,7 +61,7 @@ class MdocFile(BaseModel):
         matches = []
         if self.z_sections:
             for section in self.z_sections:
-                subframe_path = section.metadata.get("SubFramePath", None)
+                subframe_path = section.sub_frame_path
                 if not subframe_path:
                     continue
                     
@@ -61,31 +75,6 @@ class MdocFile(BaseModel):
                     matches.append(section)
         
         return matches
-
-
-class AcquisitionMetadata(BaseModel):
-    """Common acquisition metadata shared across different image types."""
-    
-    tilt_angle: Optional[float] = Field(None, description="Tilt angle in degrees")
-    accumulated_dose: Optional[float] = Field(None, description="Prior dose in e-/A^2")
-    exposure_dose: Optional[float] = Field(None, description="Dose for this exposure in e-/A^2")
-    dose_rate: Optional[float] = Field(None, description="Dose rate in e-/A^2/s")
-    pixel_spacing: Optional[float] = Field(None, description="Pixel spacing in Angstroms")
-    defocus: Optional[float] = Field(None, description="Defocus in micrometers")
-    exposure_time: Optional[float] = Field(None, description="Exposure time in seconds")
-    acquisition_order: Optional[int] = Field(None, description="0-based acquisition order")
-    datetime: Optional[str] = Field(None, description="Acquisition timestamp")
-    
-    # Stage/microscope parameters
-    stage_position: Optional[tuple[float, float]] = Field(None, description="Stage X, Y position")
-    stage_z: Optional[float] = Field(None, description="Stage Z position")
-    magnification: Optional[int] = Field(None, description="Magnification")
-    voltage: Optional[int] = Field(None, description="Acceleration voltage in kV")
-    
-    # CTF parameters
-    target_defocus: Optional[float] = Field(None, description="Target defocus in micrometers")
-    spot_size: Optional[int] = None
-    image_shift: Optional[tuple[float, float]] = None
 
 
 def parse_xf_file(
@@ -156,116 +145,137 @@ def parse_xf_file(
     return alignment
 
 
-def parse_mdoc_file(
-    filepath: str
-) -> MdocFile:
+def parse_header_section(line: str) -> dict:
     """
-    Parse an .mdoc file containing metadata about tilt series and movie frames .
-    Return a MdocFile object.
+    Parse [T = key1 = value1, key2 = value2, ...] format
+    Handles both comma-separated and space-separated pairs.
+    Returns empty dict if the T section only contains descriptive text.
     """
-    mdoc = MdocFile(filename=filepath)
+    content = line.strip()[1:-1] 
     
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        lines = f.readlines()
+    # Split off the section identifier (T)
+    _, rest = content.split("=", 1)
+    rest = rest.strip()
     
-    current_section = None
-    in_global_headers = True
+    # Check if this looks like metadata (has = signs after the first one)
+    if "=" not in rest:
+        # Just descriptive text like "SerialEM: Digitized on..."
+        return {}
     
-    for line in lines:
-        line = line.strip()
-        
-        # Skip empty lines
-        if not line:
-            continue
-        
-        # Handle comments (lines starting with [T = )
-        if line.startswith('[T =') and line.endswith(']'):
-            # comment = line[4:-1].strip()  # Remove [T = and ]
-            # mdoc.comments.append(comment)
-            continue
-        
-        # Handle ZValue sections
-        z_value_match = re.match(r'\[ZValue\s*=\s*(\d+)\]', line)
-        if z_value_match:
-            z_value = int(z_value_match.group(1))
-            current_section = ZValueSection(z_value=z_value)
-            mdoc.z_sections.append(current_section)
-            in_global_headers = False
-            continue
-        
-        # Handle key-value pairs
-        if '=' in line and not line.startswith('['):
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-            
-            # Parse value to appropriate type
-            parsed_value = parse_value(value)
-            
-            # Add to appropriate section
-            if in_global_headers:
-                mdoc.global_headers[key] = parsed_value
-            elif current_section is not None:
-                current_section.metadata[key] = parsed_value
+    # Use regex to find all "key = value" patterns
+    # Pattern: capture everything before =, the =, and the value (until next key= or comma or end)
+    pattern = r'([^=,]+?)\s*=\s*([^=,]+?)(?=\s+[^=,]+\s*=|,|$)'
+    matches = re.findall(pattern, rest)
     
-    return mdoc
+    data = {}
+    for key, value in matches:
+        key = key.strip()
+        value = value.strip()
+        
+        key_field = parse_key(key.replace(" ", "_"))
+        parsed_value = parse_value(value)
+        
+        data[key_field] = parsed_value
+    
+    return data
 
 
-def parse_value(value_str: str) -> Union[str, int, float]:
+def parse_key(key_str: str) -> str:
     """
-    Parse a string value to appropriate type (int, float, or str)
+    Convert PascalCase mdoc fields into snake case for mdoc model.
+    """
+
+    key_str = key_str.strip()
+    return inflection.underscore(key_str)
+
+
+def parse_value(value_str: str) -> Union[str, int, float, list]:
+    """
+    Parse a string value to appropriate type (int, float, list, or str)
     """
     value_str = value_str.strip()
     
-    # Try integer first
+    if " " in value_str:
+        parts = value_str.split()
+        parsed_parts = []
+        for part in parts:
+            try:
+                val = int(part)
+            except ValueError:
+                try:
+                    val = float(part)
+                except ValueError:
+                    val = part
+            parsed_parts.append(val)
+        return parsed_parts
+    
     try:
         return int(value_str)
     except ValueError:
         pass
     
-    # Try float
     try:
         return float(value_str)
     except ValueError:
         pass
     
-    # Return as string
     return value_str
 
 
-def parse_acquisition_metadata(
-        z_section: ZValueSection
-    ) -> AcquisitionMetadata:
-
-    metadata = z_section.metadata
+def parse_mdoc_file(filepath: str, json_output_path: str | None = None) -> MdocFile:
+    """
+    Parse an .mdoc file containing metadata about tilt series and movie frames.
+    Return a MdocFile object.
+    """
+    header_data = {}
+    z_sections = []
     
-    stage_pos = None
-    if "StagePosition" in metadata:
-        pos_str = metadata["StagePosition"].split()
-        stage_pos = (float(pos_str[0]), float(pos_str[1]))
+    with open(filepath, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
     
-    image_shift = None
-    if "ImageShift" in metadata:
-        shift_str = metadata["ImageShift"].split()
-        image_shift = (float(shift_str[0]), float(shift_str[1]))
+    current_section = {}
+    in_z_section = False
     
-    return AcquisitionMetadata(
-        tilt_angle=metadata.get("TiltAngle"),
-        accumulated_dose=metadata.get("PriorRecordDose"),
-        exposure_dose=metadata.get("ExposureDose"),
-        dose_rate=metadata.get("DoseRate"),
-        pixel_spacing=metadata.get("PixelSpacing"),
-        defocus=metadata.get("Defocus"),
-        exposure_time=metadata.get("ExposureTime"),
-        acquisition_order=z_section.z_value,  # z_value is the acquisition order
-        datetime=metadata.get("DateTime"),
-        stage_position=stage_pos,
-        stage_z=metadata.get("StageZ"),
-        magnification=metadata.get("Magnification"),
-        voltage=None,  # Will get from global headers
-        target_defocus=metadata.get("TargetDefocus"),
-        spot_size=metadata.get("SpotSize"),
-        image_shift=image_shift,
+    for line in lines:
+        line = line.strip()
+        
+        if not line:
+            continue
+        
+        # T section may contain metadata or just info text
+        if line.startswith('[T ='):
+            t_section_data = parse_header_section(line)
+            if t_section_data:
+                header_data.update(t_section_data)
+            continue
+        
+        z_value_match = re.match(r'\[ZValue\s*=\s*(\d+)\]', line)
+        if z_value_match:
+            if in_z_section and current_section:
+                z_sections.append(ZValueSection(**current_section))
+            
+            z_value = int(z_value_match.group(1))
+            current_section = {"z_value": z_value}
+            in_z_section = True
+            continue
+        
+        if '=' in line and not line.startswith('['):
+            key, value = line.split('=', 1)
+            parsed_key = parse_key(key)
+            parsed_value = parse_value(value)
+            
+            if in_z_section:
+                current_section[parsed_key] = parsed_value
+            else:
+                header_data[parsed_key] = parsed_value
+    
+    if in_z_section and current_section:
+        z_sections.append(ZValueSection(**current_section))
+    
+    return MdocFile(
+        filename=json_output_path if json_output_path else filepath,
+        z_sections=z_sections,
+        **header_data
     )
 
 

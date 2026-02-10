@@ -5,8 +5,7 @@ import parse
 import tempfile
 import urllib.request
 
-from enum import Enum
-from fs.ftpfs import FTPFS
+from fsspec import filesystem
 from pathlib import Path
 from typing import List
 from pydantic import BaseModel
@@ -51,18 +50,22 @@ def get_list_of_empiar_files(
     accession_no: str
 ) -> EMPIARFileList:
 
-    ftp_fs = FTPFS('ftp.ebi.ac.uk')
+    ftp_fs = filesystem('ftp', host='ftp.ebi.ac.uk')
     root_path = f"/empiar/world_availability/{accession_no}/data"
-    walker = ftp_fs.walk(root_path)
 
     empiar_files = []
 
-    for path, dirs, files in walker:
-        for file in files:
-            relpath = Path(path).relative_to(root_path)
+    for dirpath, dirnames, filenames in ftp_fs.walk:
+        for filename in filenames:
+
+            full_path = f"{dirpath}/{filename}"
+            file_info = ftp_fs.info(full_path)
+            
+            relpath = Path(dirpath).relative_to(root_path)
+            
             empiar_file = EMPIARFile(
-                path=relpath/file.name,
-                size_in_bytes=file.size
+                path=relpath / filename,
+                size_in_bytes=file_info['size']
             )
             empiar_files.append(empiar_file)
 

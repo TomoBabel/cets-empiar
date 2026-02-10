@@ -118,8 +118,7 @@ def create_cets_tilt_and_movie_families_with_metadata(
     """
     accession_no = accession_id.split("-")[1]
     
-    # TODO: use pixel_spacing for coordinate system/transformation
-    pixel_spacing = _extract_pixel_spacing(metadata)
+    # TODO: use pixel_spacing in mdoc for coordinate system/transformation
     
     tilt_series_paths = empiar_utils.get_files_matching_pattern(
         empiar_files, 
@@ -152,34 +151,6 @@ def create_cets_tilt_and_movie_families_with_metadata(
     return movie_stack_collection, tilt_series
 
 
-def _extract_pixel_spacing(metadata: metadata_parsing.MdocFile) -> float | None:
-    """Extract and validate pixel spacing from metadata."""
-    pixel_spacing = metadata.global_headers.get("PixelSpacing")
-    if pixel_spacing:
-        try:
-            return float(pixel_spacing)
-        except (ValueError, TypeError):
-            logger.info(f"Could not parse pixel size from metadata: {pixel_spacing}")
-            return None
-    else:
-        logger.info("Pixel spacing not found in metadata.")
-        return None
-
-
-def _extract_image_dimensions(metadata: metadata_parsing.MdocFile) -> list[int] | None:
-    """Extract and validate image dimensions from metadata."""
-    image_dimensions = metadata.global_headers.get("ImageSize")
-    if image_dimensions:
-        try:
-            return [int(x) for x in image_dimensions.split()]
-        except ValueError:
-            logger.info(f"Could not parse image dimensions from metadata: {image_dimensions}")
-            return None
-    else:
-        logger.info("Image dimensions not found in metadata.")
-        return None
-
-
 def _create_movie_stacks_and_tilt_images(
     metadata: metadata_parsing.MdocFile,
     region: yaml_parsing.RegionDefinition,
@@ -191,15 +162,13 @@ def _create_movie_stacks_and_tilt_images(
     """Process all z-sections to create corresponding movie frames, movie stacks, and tilt images."""
     movie_stacks = []
     tilt_images = []
-    
-    image_dimensions = _extract_image_dimensions(metadata)
 
     for z_section in metadata.z_sections:
         movie_stack = _create_movie_stack_for_section(
             z_section=z_section, 
             region=region, 
             accession_no=accession_no, 
-            image_dimensions=image_dimensions, 
+            image_dimensions=metadata.image_size, 
             empiar_files=empiar_files, 
         )
         movie_stacks.append(movie_stack)
@@ -209,7 +178,7 @@ def _create_movie_stacks_and_tilt_images(
             region=region, 
             accession_no=accession_no, 
             movie_stack_id=movie_stack.id, 
-            image_dimensions=image_dimensions, 
+            image_dimensions=metadata.image_size, 
             is_single_stack_file=is_single_stack_file, 
             tilt_series_paths=tilt_series_paths, 
             empiar_files=empiar_files
@@ -227,18 +196,16 @@ def _create_movie_stack_for_section(
     empiar_files: empiar_utils.EMPIARFileList, 
 ) -> cets_models.MovieStack:
     """Create a MovieStack object for a single z-section."""
-    acquisition_metadata = metadata_parsing.parse_acquisition_metadata(z_section)
     
     movie_frames = _create_movie_frames(
         z_section=z_section,
-        acquisition_metadata=acquisition_metadata,
         image_dimensions=image_dimensions
     )
     
     # TODO: this ties in a particular z-section with an empiar file, 
     # but if it fails, could fall back to matching pattern with files (as in no-metadata route), 
     # and assume correspondence with z-sections?
-    subframe_path = z_section.metadata.get("SubFramePath")
+    subframe_path = z_section.sub_frame_path
     z_section_empiar_path, _ = metadata_parsing.match_mdoc_path_to_empiar(
         subframe_path, 
         region.movie_stack_filter_pattern, 
@@ -261,15 +228,13 @@ def _calculate_movie_frame_accumulated_dose(
     frame_index: int
 ) -> float:
     """Calculate accumulated dose up to and including a specific frame."""    
-    metadata = z_section.metadata
     
     # Dose accumulated before this tilt angle started
     # (includes any scout/focus images taken before the series)
-    prior_dose = float(metadata["PriorRecordDose"])
+    prior_dose = z_section.prior_record_dose
     
     # Dose per frame
-    frame_dose_str = metadata["FrameDosesAndNumber"].split()[0]
-    dose_per_frame = float(frame_dose_str)
+    dose_per_frame = z_section.frame_doses_and_number[0]
     
     # Accumulated dose up to and including this frame
     accumulated_dose = prior_dose + (dose_per_frame * (frame_index + 1))
@@ -279,11 +244,10 @@ def _calculate_movie_frame_accumulated_dose(
 
 def _create_movie_frames(
     z_section: metadata_parsing.ZValueSection, 
-    acquisition_metadata: metadata_parsing.AcquisitionMetadata, 
     image_dimensions: list[int] | None
 ) -> list[cets_models.MovieFrame]:
     """Create MovieFrame objects for all frames in a movie stack."""
-    num_frames = z_section.metadata.get("NumSubFrames", 0)
+    num_frames = z_section.num_sub_frames
     movie_frames = []
     
     for f in range(num_frames):
@@ -294,7 +258,7 @@ def _create_movie_frames(
         # TODO: allow for individual frame paths if available
         movie_frame = cets_models.MovieFrame.model_construct(
             section=movie_frame_section, 
-            nominal_tilt_angle=acquisition_metadata.tilt_angle, 
+            nominal_tilt_angle=z_section.tilt_angle, 
             accumulated_dose=accumulated_dose, 
             width=image_dimensions[0] if image_dimensions else None, 
             height=image_dimensions[1] if image_dimensions else None
@@ -308,18 +272,14 @@ def _calculate_tilt_image_accumulated_dose(
     z_section: metadata_parsing.ZValueSection
 ) -> float:
     """Calculate accumulated dose for a tilt image."""    
-    metadata = z_section.metadata
     
     # Dose accumulated before this tilt angle started
     # (includes any scout/focus images taken before the series)
-    prior_dose = float(metadata["PriorRecordDose"])
-    
-    frame_doses_and_number = metadata["FrameDosesAndNumber"].split()
-    dose_per_frame = float(frame_doses_and_number[0])
-    num_frames = int(frame_doses_and_number[1])
+    prior_dose = z_section.prior_record_dose
+    frame_doses_and_number = z_section.frame_doses_and_number
     
     # Accumulated dose up to and including this image
-    accumulated_dose = prior_dose + (dose_per_frame * num_frames)
+    accumulated_dose = prior_dose + (frame_doses_and_number[0] * frame_doses_and_number[1])
     
     return accumulated_dose
 
@@ -335,7 +295,6 @@ def _create_tilt_image_for_section(
     empiar_files: empiar_utils.EMPIARFileList
 ) -> cets_models.TiltImage:
     """Create a TiltImage object for a single z-section."""
-    acquisition_metadata = metadata_parsing.parse_acquisition_metadata(z_section)
     
     if is_single_stack_file:
         tilt_image_path = None
@@ -356,7 +315,7 @@ def _create_tilt_image_for_section(
         movie_stack_id=movie_stack_id, 
         path=tilt_image_path, 
         section=section_index, 
-        nominal_tilt_angle=acquisition_metadata.tilt_angle, 
+        nominal_tilt_angle=z_section.tilt_angle, 
         accumulated_dose=accumulated_dose, 
         width=image_dimensions[0] if image_dimensions else None, 
         height=image_dimensions[1] if image_dimensions else None
@@ -364,14 +323,14 @@ def _create_tilt_image_for_section(
 
 
 def _resolve_tilt_image_path(
-    z_section, 
+    z_section: metadata_parsing.ZValueSection, 
     region: yaml_parsing.RegionDefinition, 
     accession_no: str, 
     tilt_series_paths: list[str], 
     empiar_files: empiar_utils.EMPIARFileList
 ) -> str:
     """Resolve the tilt image path for multi-file tilt series."""
-    subframe_path = z_section.metadata.get("SubFramePath")
+    subframe_path = z_section.sub_frame_path
     _, matched_file_parts = metadata_parsing.match_mdoc_path_to_empiar(
         subframe_path, 
         region.movie_stack_filter_pattern, 

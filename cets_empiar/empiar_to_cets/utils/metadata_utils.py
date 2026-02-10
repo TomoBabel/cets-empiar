@@ -1,7 +1,7 @@
 import json
 import logging
 import struct
-from fs.ftpfs import FTPFS
+from fsspec import filesystem
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +57,10 @@ def load_mdoc_file(
     temp_mdoc_path = download_file_from_empiar(accession_id, file_pattern)
     
     try:
-        mdoc = metadata_parsing.parse_mdoc_file(temp_mdoc_path)
+        mdoc = metadata_parsing.parse_mdoc_file(
+            filepath=temp_mdoc_path,
+            json_output_path=str(local_data_path)
+        )
         save_mdoc_to_json(mdoc, str(local_data_path))
         
         return mdoc
@@ -104,9 +107,9 @@ def read_mrc_header(
 
     ftp_url = "ftp.ebi.ac.uk"
 
-    with FTPFS(ftp_url) as ftp_fs:
-        with ftp_fs.open(filepath, "rb") as f:
-            header_data = f.read(1024)
+    ftp_fs = filesystem('ftp', host=ftp_url)
+    with ftp_fs.open(filepath, "rb") as f:
+        header_data = f.read(1024)
     
     # Parse MRC header - according to MRC2014 format - https://www.ccpem.ac.uk/mrc-format/mrc2014/
     # TODO: other MRC formats
