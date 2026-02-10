@@ -1,0 +1,31 @@
+{
+  "filename": "test/input_data/TS_minimal.mdoc",
+  "tilt_axis_angle": null,
+  "binning": null,
+  "image_size": null,
+  "pixel_spacing": null,
+  "data_mode": null,
+  "voltage": null,
+  "z_sections": [
+    {
+      "z_value": 0,
+      "tilt_angle": 0.0,
+      "sub_frame_path": null,
+      "num_sub_frames": null,
+      "prior_record_dose": null,
+      "frame_doses_and_number": null,
+      "exposure_dose": null,
+      "stage_position": null
+    },
+    {
+      "z_value": 1,
+      "tilt_angle": 2.0,
+      "sub_frame_path": null,
+      "num_sub_frames": null,
+      "prior_record_dose": null,
+      "frame_doses_and_number": null,
+      "exposure_dose": null,
+      "stage_position": null
+    }
+  ]
+}
